@@ -1,0 +1,12 @@
+global using Microsoft.Win32;
+global using System.Diagnostics;
+global using System.Diagnostics.CodeAnalysis;
+global using System.Net;
+global using System.Net.NetworkInformation;
+global using System.Net.Sockets;
+global using System.Runtime.InteropServices;
+global using System.Security.Principal;
+global using static Interop.CoreFoundation;
+global using static Interop.Sys;
+global using static Interop.SystemConfiguration;
+global using static System.StringComparison;

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Triode</title>
+    <link rel="icon" href="favicon.png" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <form name="network">
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="reset" value="block"><input type="button" name="download" value="download"></th>
+                    <th>From</th><th colspan="2">Request</th><th>Status</th><th>Size</th><th>Time</th><th>Referer</th><th>User-Agent <input type="button" name="help" value="help"></th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <aside>
+            <header><input type="button" name="restore" value="close"></header>
+            <pre></pre>
+        </aside>
+    </form>
+    <dialog>
+        <form method="dialog">
+            <input type="submit" name="close" value="close">
+            <section>
+                <h1>Usage</h1>
+                <ol>
+                    <li>Download the <a href="root.crt">Root CA certificate</a> and install it as a trusted root CA.</li>
+                    <li>Configure DNS addresses to <data class="nameservers"></data>.</li>
+                    <li>Restart the browser.</li>
+                </ol>
+            </section>
+        </form>
+    </dialog>
+    <script src="index.js" type="module"></script>
+</body>
+</html>

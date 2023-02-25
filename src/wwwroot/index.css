@@ -1,0 +1,61 @@
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,300,0,0");
+
+* { appearance: none; background: unset; border: none; box-sizing: border-box; color: unset; font-weight: normal; margin: 0; outline: none; padding: 0; }
+html { height: 100%; }
+body { background: #fff; color: #1b1b1b; font-family: system-ui; font-size: 12px; height: 100%; overflow: hidden; }
+form { height: 100%; position: relative; }
+input { display: inline-block; font-family: "Material Symbols Outlined"; font-size: 20px; font-weight: 300; line-height: 20px; padding: 1px 2px; vertical-align: bottom; -webkit-font-smoothing: antialiased; }
+input:hover { background: #eaeaea; }
+input:active { background: #e0e0e0; }
+pre, code { font-family: Consolas, Menlo, monospace; font-size: 11px; }
+table { border-collapse: collapse; cursor: default; display: block; position: absolute; max-height: 100%; min-width: 100%; overflow-y: auto; }
+thead { background: #f7f7f7; box-shadow: 0 0 0 1px #cacdd1; position: sticky; top: 0; z-index: 1; }
+th, td { border: solid #cacdd1; border-width: 0 1px; padding: 2px 4px; text-align: left; white-space: nowrap; }
+thead th input + input { margin-left: 2px; }
+tbody tr:nth-child(odd) { background: #f5f5f5; }
+tbody tr:hover { background: #f0f6fd; }
+tbody tr.error { color: #ff1500; }
+th:nth-child(1) { padding: 0 2px; min-width: 60px; }
+th:nth-child(2) { min-width: 80px; }
+th:nth-child(3) { width: 100%; }
+th:nth-child(4) { min-width: 60px; }
+th:nth-child(5) { min-width: 80px; }
+th:nth-child(6) { min-width: 80px; }
+th:nth-child(7) { min-width: 120px; }
+th:nth-child(8) { min-width: 200px; }
+th:last-child input { float: right; margin: -4px 0; }
+td:nth-child(2) { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+td:nth-child(3) { border-right: none; min-width: 40px; text-align: right; }
+td:nth-child(4) { border-left: none; max-width: 0; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+td:nth-child(6) { text-align: right; }
+td:nth-child(6):not(:empty)::after { content: " B"; }
+td:nth-child(7) { text-align: right; }
+td:nth-child(7):not(:empty)::after { content: " ms"; }
+td:nth-child(8) { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+td:nth-child(9) { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+aside { background: #fff; border-left: 2px solid #c8cbcf; display: none; grid-template-rows: auto 1fr; height: 100%; position: absolute; right: 0; width: 50%; z-index: 2; }
+aside[data-id] { display: grid; }
+aside header { background: #f7f7f7; border-bottom: 1px solid #cacdd1; }
+aside pre { overflow: auto; padding: 2px 4px; }
+aside pre code { cursor: pointer; }
+dialog { background: #f6f6f6; border-radius: 8px; color: #101010; font-size: 14px; height: calc(100% - 8px); left: 4px; opacity: .75; top: 4px; width: calc(100% - 8px); z-index: 3; }
+dialog input { position: absolute; right: 0; top: 0; }
+dialog input:disabled { visibility: hidden; }
+dialog section { padding: 8px; }
+dialog h1 { font-size: 20px; margin-bottom: 8px; }
+dialog ol { margin-left: 20px; }
+dialog ol li + li { margin-top: 4px; }
+@media (prefers-color-scheme: dark) {
+    body { background: #202124; color: #fff; }
+    input:hover { background: #484848; }
+    input:active { background: #424242; }
+    thead { background: #333; box-shadow: 0 0 0 1px #494c59; }
+    tbody tr:nth-child(odd) { background: #292929; }
+    tbody tr:nth-child(even) { background: #242424; }
+    tbody tr:hover { background: #172338; }
+    tbody tr.error { color: #ff2d38; }
+    th, td { border-color: #494c59; }
+    aside { background: #202124; border-color: #494c50; }
+    aside header { background: #333; border-color: #494c59; }
+    dialog { background: #2d2d2d; color: #fff; }
+}

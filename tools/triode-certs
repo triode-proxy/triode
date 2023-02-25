@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+
+from __future__ import print_function
+from argparse import ArgumentParser
+from datetime import datetime
+from glob import glob
+from os import R_OK, W_OK, access, chmod, chown, devnull, stat
+from os.path import dirname, join
+from re import M, compile, search
+from subprocess import PIPE, Popen, call, check_output
+from sys import stderr
+
+DEVNULL = open(devnull, 'wb')
+
+PEM_PAIRS = [
+    ['*.crt', '*.key'],
+    ['/etc/pki/tls/certs/*.crt',
+     '/etc/pki/tls/private/*.key'],
+    ['/etc/letsencrypt/live/*/cert.pem',
+     '/etc/letsencrypt/live/*/privkey.pem'],
+]
+PATTERNS = {
+    'Not After'  : compile(r'(?<=Not After : ).+$', M),
+    'Subject'    : compile(r'(?<=Subject: ).+$', M),
+    'Fingerprint': compile(r'(?<=Fingerprint=).+$', M),
+}
+
+UNIT_DIRS = [
+    '/etc/systemd/system/multi-user.target.wants',
+    '/etc/systemd/system',
+    '/lib/systemd/system',
+]
+UNIT_NAME = 'triode.service'
+
+def get_store_dir():
+    for unitdir in UNIT_DIRS:
+        unitfile = join(unitdir, UNIT_NAME)
+        if access(unitfile, R_OK):
+            with open(unitfile) as f:
+                unit = f.read()
+                home = search(r'(?<=HOME=).+$', unit, M)
+                if home:
+                    return join(home.group(0), '.dotnet/corefx/cryptography/x509stores/my')
+    raise RuntimeError("'%s' not found or invalid format" % UNIT_NAME)
+
+def hide(path):
+    dir = stat(dirname(path))
+    chmod(path, 0o600)
+    chown(path, dir.st_uid, dir.st_gid)
+
+def import_certificate(certfile, keyfile, storedir):
+    out = check_output(['openssl', 'x509', '-in', certfile, '-fingerprint', '-noout', '-text'], stderr=DEVNULL).decode()
+    fingerprint = PATTERNS['Fingerprint'].search(out).group(0).replace(':', '')
+    subject = PATTERNS['Subject'].search(out).group(0)
+    pfxfile = join(storedir, fingerprint + '.pfx')
+    if access(pfxfile, R_OK):
+        return 0
+    code = call(['openssl', 'pkcs12', '-export', '-in', certfile, '-inkey', keyfile, '-out', pfxfile, '-password', 'pass:'], stderr=DEVNULL)
+    if code != 0:
+        raise RuntimeError("Failed to import %s" % subject)
+    hide(pfxfile)
+    return 1
+
+def import_letsencrypt():
+    storedir = get_store_dir()
+    if not access(storedir, W_OK):
+        raise RuntimeError("'%s' access denied" % storedir)
+    count = 0
+    for [certglob, keyglob] in PEM_PAIRS:
+        left = keyglob.find('*')
+        right = left + 1 - len(keyglob)
+        for keyfile in glob(keyglob):
+            cn = keyfile[left:right]
+            certfile = certglob.replace('*', cn)
+            if not access(certfile, R_OK):
+                print("'%s' not found or access denied" % certfile, file=stderr)
+                continue
+            if not access(keyfile, R_OK):
+                print("'%s' not found or access denied" % keyfile, file=stderr)
+                continue
+            count += import_certificate(certfile, keyfile, storedir)
+    print("%d certificates imported" % count, file=stderr)
+
+def list_certificates(order_by_time = False):
+    storedir = get_store_dir()
+    if not access(storedir, R_OK):
+        raise RuntimeError("'%s' access denied" % storedir)
+    now = datetime.utcnow()
+    table = []
+    for pfxfile in glob(join(storedir, '*.pfx')):
+        pkcs12 = Popen(['openssl', 'pkcs12', '-in', pfxfile, '-nokeys', '-password', 'pass:'], stdout=PIPE, stderr=DEVNULL)
+        x509 = Popen(['openssl', 'x509', '-noout', '-text'], stdin=pkcs12.stdout, stdout=PIPE, stderr=DEVNULL)
+        out, _ = x509.communicate()
+        out = out.decode()
+        expiration = datetime.strptime(PATTERNS['Not After'].search(out).group(0), '%b %d %H:%M:%S %Y GMT')
+        subject = PATTERNS['Subject'].search(out).group(0)
+        if expiration < now:
+            continue
+        if order_by_time:
+            table.append((expiration, subject))
+        else:
+            print("[%s] %s" % (expiration, subject))
+    if order_by_time:
+        for expiration, subject in sorted(table, key=lambda x: x[0]):
+            print("[%s] %s" % (expiration, subject))
+
+def main():
+    parser = ArgumentParser(usage='%(prog)s [options...]')
+    parser.add_argument('-i', '--import', dest='import_', action='store_true',
+                        help='import certificates')
+    parser.add_argument('-l', '--list', dest='list', action='store_true',
+                        help='list certificates')
+    parser.add_argument('-t', '--time', dest='order_by_time', action='store_true',
+                        help='order by expiration date')
+    options = parser.parse_args()
+    try:
+        if options.import_:
+            import_letsencrypt()
+        elif options.list:
+            list_certificates(options.order_by_time)
+        else:
+            parser.print_help(file=stderr)
+    except Exception as err:
+        print("Error: %s" % err, file=stderr)
+
+if __name__ == '__main__':
+    main()

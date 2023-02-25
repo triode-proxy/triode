@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+from __future__ import print_function
+from base64 import b64encode
+from datetime import datetime, timedelta, tzinfo
+from json import loads
+from locale import LC_ALL, setlocale
+from os import urandom
+from re import compile
+from socket import socket
+from struct import unpack
+from sys import stderr
+from time import timezone
+
+class Timezone(tzinfo):
+    def utcoffset(self, dt):
+        return timedelta(seconds=-timezone)
+    def dst(self, dt):
+        return timedelta(0)
+
+TZ = Timezone()
+
+INVALID_CHARS = compile(r'[\x00-\x1F"\\\x7F]')
+
+def escape_replacer(m):
+    return '\\x%02X' % ord(m.group(0))
+
+def escape(s):
+    return INVALID_CHARS.sub(escape_replacer, s)
+
+def format_time(timestamp):
+    dt = datetime.fromtimestamp(timestamp, TZ)
+    s = dt.strftime('%d/%b/%Y:%H:%M:%S')
+    o = dt.utcoffset()
+    z = 0 if o is None else o.seconds // 3600 * 100 + o.seconds // 60 % 60
+    return '%s +%04d' % (s, z)
+
+def get_header(headers, name, default = '-'):
+    name = name.lower()
+    for n, v in headers:
+        if n.lower() == name:
+            return v
+    return default
+
+def trace():
+    ws = socket()
+    ws.connect(('localhost', 80))
+    ws.send(('GET / HTTP/1.1\r\n'
+             'Host: localhost\r\n'
+             'Connection: Upgrade\r\n'
+             'Upgrade: websocket\r\n'
+             'Sec-WebSocket-Version: 13\r\n'
+             'Sec-WebSocket-Key: %s\r\n'
+             '\r\n' %
+             b64encode(urandom(16)).decode()).encode())
+    f = ws.makefile()
+    if not f.readline().startswith('HTTP/1.1 101'):
+        raise RuntimeError('Connection refused')
+    while len(f.readline()) > 2:
+        pass
+    while True:
+        header = unpack('>H', ws.recv(2))[0]
+        opcode = (header & 0x0F00) >> 8
+        masked = (header & 0x0080) != 0
+        length = (header & 0x007F) >> 0
+        if length == 126:
+            length = unpack('>H', ws.recv(2))[0]
+        elif length == 127:
+            length = unpack('>Q', ws.recv(8))[0]
+        if masked:
+            ws.recv(4)
+        payload = ws.recv(length)
+        if opcode == 0x8:
+            break
+        if opcode != 0x1:
+            continue
+        [id, time, addr, method, uri, protocol, status, size, elapsed, reqhdrs, reshdrs] = loads(payload)
+        print('%s - - [%s] "%s %s %s" %d %d "%s" "%s"' %
+              (addr, format_time(time / 1000), method, escape(uri), protocol, status, size,
+               get_header(reqhdrs, 'Referer'), get_header(reqhdrs, 'User-Agent')))
+    ws.close()
+
+def main():
+    setlocale(LC_ALL, 'C')
+    try:
+        trace()
+    except KeyboardInterrupt:
+        pass
+    except Exception as err:
+        print("Error: %s" % err, file=stderr)
+
+if __name__ == '__main__':
+    main()
