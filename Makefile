@@ -22,9 +22,15 @@ endif
 SRCS   := $(shell find $(PROJECT_DIR) -name *.cs) $(PROJECT)
 OUTDIR := $(PROJECT_DIR)/bin/$(CONFIGURATION)/$(TARGET_FRAMEWORK)/$(RID)/publish
 
-.PHONY: all install clean
+.PHONY: all docs install clean
 
 all: $(OUTDIR)/$(ASSEMBLY_NAME) $(OUTDIR)/$(ASSEMBLY_NAME).service
+
+docs:
+	mkdocs build
+	install -m 644 src/wwwroot/favicon.ico src/wwwroot/favicon.png site/
+	perl -pi -e 's|img/favicon.ico|favicon.png" media="(prefers-color-scheme: dark)|g' site/*.html site/*/*.html
+	$(RM) site/img/favicon.ico
 
 install: all
 	install -d -m 755 $(SYSCONFDIR)/$(ASSEMBLY_NAME)/wwwroot
@@ -35,7 +41,7 @@ install: all
 	install -m 644 $(OUTDIR)/$(ASSEMBLY_NAME).service /etc/systemd/system/$(ASSEMBLY_NAME).service
 
 clean:
-	$(RM) -r $(PROJECT_DIR)/bin $(PROJECT_DIR)/obj
+	$(RM) -r $(PROJECT_DIR)/bin $(PROJECT_DIR)/obj site
 
 $(OUTDIR)/$(ASSEMBLY_NAME): $(SRCS)
 	dotnet publish --nologo -c $(CONFIGURATION) $(PUBLISH_ARGS) -r $(RID) --sc $(PROJECT)

@@ -1,0 +1,7 @@
+site_name: Triode
+theme: readthedocs
+nav:
+  - Introduction: index.md
+  - Installation: setup.md
+  - Usage: usage.md
+  - Tools: tools.md
