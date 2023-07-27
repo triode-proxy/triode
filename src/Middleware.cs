@@ -477,7 +477,22 @@ internal sealed class Middleware
                 details.RequestContent = requestContent;
                 details.RequestContentLength = context.Request.ContentLength;
                 details.RequestContentType = context.Request.ContentType;
-                request.Content = new StreamSplitContent(context.Request.Body, requestContent, MaxDetailsCacheSize, aborted);
+                var contentType = context.Request.GetTypedHeaders().ContentType;
+                if (contentType?.MediaType.HasValue == true &&
+                    _settings.CurrentValue.Subs?.TryGetValue(contentType.MediaType.Value, out var subs) == true &&
+                    contentType.TryGetEncoding(out var charset))
+                {
+                    await context.Request.Body.CopyToAsync(requestContent, aborted).ConfigureAwait(false);
+                    var text = charset.GetString(requestContent.Memory.Span);
+                    foreach (var (from, to) in subs)
+                        text = text.Replace(from, to);
+                    request.Content = new StringContent(text, charset, contentType.MediaType.Value);
+                }
+                else
+                {
+                    request.Content = new StreamSplitContent(context.Request.Body, requestContent, MaxDetailsCacheSize, aborted);
+                    context.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = null;
+                }
             }
             bool ShouldBeSecure(string? value)
                 => Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttp
@@ -487,7 +502,7 @@ internal sealed class Middleware
                 .Except(NonPropagatableHeaders, OrdinalIgnoreCase))
             {
                 if (name.StartsWith("Content-", OrdinalIgnoreCase))
-                    request.Content?.Headers?.TryAddWithoutValidation(name, values.AsEnumerable());
+                    request.Content?.Headers?.TryAddIfNotPresent(name, values);
                 else if (name.Equals(HeaderNames.Cookie, OrdinalIgnoreCase))
                     request.Headers.TryAddWithoutValidation(name, string.Join("; ", values));
                 else if (securing && name.Equals(HeaderNames.Origin, OrdinalIgnoreCase) && ShouldBeSecure(values))
@@ -497,7 +512,6 @@ internal sealed class Middleware
                 else
                     request.Headers.TryAddWithoutValidation(name, values.AsEnumerable());
             }
-            context.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = null;
             using var response = await client.SendAsync(request, ResponseHeadersRead, aborted).ConfigureAwait(false);
             context.Response.StatusCode = (int)response.StatusCode;
             bool ShouldBeInsecure(string? value)
@@ -556,23 +570,25 @@ internal sealed class Middleware
                         context.Response.Headers.Remove(HeaderNames.ContentMD5);
                         await context.Response.Body.WriteAsync(body, aborted).ConfigureAwait(false);
                     }
-                    return;
                 }
-                context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
-                await context.Response.StartAsync(aborted).ConfigureAwait(false);
-                using var stream = await response.Content.ReadAsStreamAsync(aborted).ConfigureAwait(false);
-                using var buffer = MemoryPool<byte>.Shared.Rent(BufferSize);
-                for (int n; (n = await stream.ReadAsync(buffer.Memory, aborted).ConfigureAwait(false)) > 0;)
+                else
                 {
-                    await context.Response.Body.WriteAsync(buffer.Memory[..n], aborted).ConfigureAwait(false);
-                    if (bodyBytesSent < MaxDetailsCacheSize)
+                    context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+                    await context.Response.StartAsync(aborted).ConfigureAwait(false);
+                    using var stream = await response.Content.ReadAsStreamAsync(aborted).ConfigureAwait(false);
+                    using var buffer = MemoryPool<byte>.Shared.Rent(BufferSize);
+                    for (int n; (n = await stream.ReadAsync(buffer.Memory, aborted).ConfigureAwait(false)) > 0;)
                     {
-                        var cap = (int)Math.Min(n, MaxDetailsCacheSize - bodyBytesSent);
-                        await responseContent.WriteAsync(buffer.Memory[..cap], aborted).ConfigureAwait(false);
+                        await context.Response.Body.WriteAsync(buffer.Memory[..n], aborted).ConfigureAwait(false);
+                        if (bodyBytesSent < MaxDetailsCacheSize)
+                        {
+                            var cap = (int)Math.Min(n, MaxDetailsCacheSize - bodyBytesSent);
+                            await responseContent.WriteAsync(buffer.Memory[..cap], aborted).ConfigureAwait(false);
+                        }
+                        bodyBytesSent += n;
                     }
-                    bodyBytesSent += n;
+                    await context.Response.CompleteAsync().ConfigureAwait(false);
                 }
-                await context.Response.CompleteAsync().ConfigureAwait(false);
             }
         }
         finally
