@@ -1,3 +1,5 @@
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
 var web = WebApplication.CreateBuilder(args);
 web.Configuration.AddHostsFile();
 web.Services.AddHosts(web.Configuration);
