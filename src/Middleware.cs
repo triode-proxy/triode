@@ -202,7 +202,7 @@ internal sealed class Middleware
         }
         catch (Exception ex) when (ex is OperationCanceledException or TimeoutException)
         {
-            _logger.LogError("Timeout exceeded while proxing {Uri}", context.Request.GetRawUri());
+            _logger.LogError("Timeout exceeded while proxying {Uri}", context.Request.GetRawUri());
             context.Response.End(Status504GatewayTimeout);
         }
         catch (Exception ex)

@@ -74,7 +74,6 @@ internal sealed class Service : BackgroundService
             else if (!_settings.CurrentValue.Rules.TryGetValue(name, out var behavior) || behavior == Behavior.Pass)
             {
                 var (addrs, ttl, code) = await _resolver.ResolveAsync(name, type, stopping).ConfigureAwait(false);
-                ttl = TimeSpan.FromSeconds(Math.Min(ttl.TotalSeconds, _settings.CurrentValue.TTL.Proxing.TotalSeconds));
                 var response = addrs.Count > 0
                     ? DnsPacket.CreateAnswer(question, type, ttl, addrs)
                     : DnsPacket.CreateError(request.Header, code);
@@ -83,7 +82,7 @@ internal sealed class Service : BackgroundService
             else if (behavior is Behavior.Proxy or Behavior.Secure)
             {
                 var addrs = await GetServerAddressesAsync(type, remote, stopping).ConfigureAwait(false);
-                var response = DnsPacket.CreateAnswer(question, type, _settings.CurrentValue.TTL.Proxing, addrs);
+                var response = DnsPacket.CreateAnswer(question, type, _settings.CurrentValue.TTL.Positive, addrs);
                 await server.SendAsync(response.Memory, remote, stopping).ConfigureAwait(false);
                 _records.Send(new(
                     $"{request.Header.Id:X4}",

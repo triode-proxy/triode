@@ -35,19 +35,14 @@ internal sealed class Settings
     internal sealed class TTLOptions
     {
         /// <summary>
-        /// Caching TTL for errors and timeout
+        /// Caching TTL for error, timeout and nonexistent domains
         /// </summary>
-        public TimeSpan Failure { get; set; } = TimeSpan.FromMinutes(1);
+        public TimeSpan Negative { get; set; } = TimeSpan.FromMinutes(1);
 
         /// <summary>
-        /// Caching TTL for nonexistent domain
+        /// TTL for passing, proxying domains
         /// </summary>
-        public TimeSpan Missing { get; set; } = TimeSpan.FromMinutes(10);
-
-        /// <summary>
-        /// TTL for proxing domains
-        /// </summary>
-        public TimeSpan Proxing { get; set; } = TimeSpan.FromHours(1);
+        public TimeSpan Positive { get; set; } = TimeSpan.FromHours(1);
     }
 
     public bool Promiscuous { get; set; }

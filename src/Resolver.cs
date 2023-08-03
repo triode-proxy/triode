@@ -44,7 +44,7 @@ internal sealed class Resolver : IDisposable
         if (_etchosts.CurrentValue.GetAddresses(name) is IEnumerable<IPAddress> addrs && addrs.Any())
         {
             var af = type == DnsRecordType.A ? AddressFamily.InterNetwork : AddressFamily.InterNetworkV6;
-            return (addrs.Where(a => a.AddressFamily == af).ToArray(), _settings.CurrentValue.TTL.Proxing, DnsResponseCode.NoError);
+            return (addrs.Where(a => a.AddressFamily == af).ToArray(), _settings.CurrentValue.TTL.Positive, DnsResponseCode.NoError);
         }
         return await _memcache.GetOrCreateAsync((name, type), async entry =>
         {
@@ -54,10 +54,8 @@ internal sealed class Resolver : IDisposable
             var answers = response.Answers.Where(a => a.Type == type).ToArray();
             var addrs = answers.Select(a => new IPAddress(a.Data.Span)).ToArray();
             var ttl = answers.Length > 0
-                ? answers.Min(a => a.TimeToLive)
-                : response.Header.ResponseCode is DnsResponseCode.NoError or DnsResponseCode.NameError
-                    ? _settings.CurrentValue.TTL.Missing
-                    : _settings.CurrentValue.TTL.Failure;
+                ? TimeSpan.FromTicks(Math.Min(answers.Min(a => a.TimeToLive).Ticks, _settings.CurrentValue.TTL.Positive.Ticks))
+                : _settings.CurrentValue.TTL.Negative;
             entry.AbsoluteExpiration = now + ttl;
             entry.Size = answers.Sum(a => a.Data.Length);
             return (addrs, ttl, response.Header.ResponseCode);
