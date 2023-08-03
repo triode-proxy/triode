@@ -12,7 +12,7 @@ public static class MediaTypeHeaderValueExtensions
             encoding = contentType.Charset.HasValue ? Encoding.GetEncoding(contentType.Charset.Value) : DefaultEncoding;
             return true;
         }
-        catch (ArgumentException)
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
         {
             encoding = default;
             return false;
