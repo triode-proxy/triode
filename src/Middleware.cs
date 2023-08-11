@@ -41,7 +41,7 @@ internal sealed class Middleware
 
     private static readonly IReadOnlyCollection<IPNetwork> PrivateNetworks = new IPNetwork[]
     {
-        new(IPAddress.Parse("10.0.0.0"),  8),
+        new(IPAddress.Parse("10.0.0.0"), 8),
         new(IPAddress.Parse("172.16.0.0"), 12),
         new(IPAddress.Parse("192.168.0.0"), 16),
     };
