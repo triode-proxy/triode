@@ -222,8 +222,8 @@ internal sealed class Middleware
                 aborted.IsCancellationRequested ? Status499Aborted : context.Response.StatusCode,
                 context.Items.TryGetValue(BodyBytesSentKey, out var sent) ? (long)sent! : default,
                 stopwatch.ElapsedMilliseconds,
-                context.Request.Headers.Except(Http2PseudoHeaders).ToArray(),
-                context.Response.Headers.Except(Http2PseudoHeaders).ToArray()
+                context.Request.Headers.ExceptBy(Http2PseudoHeaders, p => p.Key).ToArray(),
+                context.Response.Headers.ExceptBy(Http2PseudoHeaders, p => p.Key).ToArray()
                 ));
         }
     }
@@ -343,8 +343,8 @@ internal sealed class Middleware
         using var client = _clients.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, RequestUri.CopyFrom(context.Request));
         foreach (var (name, values) in context.Request.Headers
-            .Except(Http2PseudoHeaders)
-            .Except(NonPropagatableHeaders.Except(HeaderNames.Connection), OrdinalIgnoreCase))
+            .ExceptBy(Http2PseudoHeaders, p => p.Key, StringComparer.Ordinal)
+            .ExceptBy(NonPropagatableHeaders.Except(HeaderNames.Connection), p => p.Key, StringComparer.OrdinalIgnoreCase))
         {
             if (name.Equals(HeaderNames.Cookie, OrdinalIgnoreCase))
                 request.Headers.TryAddWithoutValidation(name, string.Join("; ", values));
@@ -361,7 +361,7 @@ internal sealed class Middleware
             throw new WebSocketException(WebSocketError.ConnectionClosedPrematurely);
         context.Response.StatusCode = Status101SwitchingProtocols;
         foreach (var (name, values) in response.Headers
-            .Except(NonPropagatableHeaders.Except(HeaderNames.Connection), OrdinalIgnoreCase))
+            .ExceptBy(NonPropagatableHeaders.Except(HeaderNames.Connection), p => p.Key, StringComparer.OrdinalIgnoreCase))
         {
             if (name.Equals(HeaderNames.Server, OrdinalIgnoreCase))
                 context.Response.Headers.Server = string.Join(' ', values);
@@ -381,8 +381,8 @@ internal sealed class Middleware
             context.Response.StatusCode,
             default,
             stopwatch.ElapsedMilliseconds,
-            context.Request.Headers.Except(Http2PseudoHeaders).ToArray(),
-            context.Response.Headers.Except(Http2PseudoHeaders).ToArray()
+            context.Request.Headers.ExceptBy(Http2PseudoHeaders, p => p.Key).ToArray(),
+            context.Response.Headers.ExceptBy(Http2PseudoHeaders, p => p.Key).ToArray()
             ));
         var (id, from) = (context.TraceIdentifier, context.Connection.RemoteIpAddress);
         await Task.WhenAll(
@@ -500,8 +500,8 @@ internal sealed class Middleware
                 => Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttp
                 && rules.TryGetValue(uri.Host, out var behavior) && behavior == Behavior.Secure;
             foreach (var (name, values) in context.Request.Headers
-                .Except(Http2PseudoHeaders)
-                .Except(NonPropagatableHeaders, OrdinalIgnoreCase))
+                .ExceptBy(Http2PseudoHeaders, p => p.Key)
+                .ExceptBy(NonPropagatableHeaders, p => p.Key, StringComparer.OrdinalIgnoreCase))
             {
                 if (name.StartsWith("Content-", OrdinalIgnoreCase))
                     request.Content?.Headers?.TryAddIfNotPresent(name, values);
@@ -520,7 +520,7 @@ internal sealed class Middleware
                 => Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
                 && rules.TryGetValue(uri.Host, out var behavior) && behavior == Behavior.Secure;
             foreach (var (name, values) in response.Headers.Concat(response.Content.Headers)
-                .Except(NonPropagatableHeaders, OrdinalIgnoreCase))
+                .ExceptBy(NonPropagatableHeaders, p => p.Key, StringComparer.OrdinalIgnoreCase))
             {
                 if (name.Equals(HeaderNames.Server, OrdinalIgnoreCase))
                     context.Response.Headers.Server = string.Join(' ', values);
