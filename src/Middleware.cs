@@ -471,7 +471,9 @@ internal sealed class Middleware
                 context.Features.Get<IHttpRequestFeature>()!.RawTarget);
             using var client = _clients.CreateClient();
             using var request = new HttpRequestMessage(new(context.Request.Method), requestUri);
-            if (!HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method))
+            if (!HttpMethods.IsGet(context.Request.Method) &&
+                !HttpMethods.IsHead(context.Request.Method) &&
+                !HttpMethods.IsOptions(context.Request.Method))
             {
                 var requestContent = new MemoryPoolStream((int)(context.Request.ContentLength ?? 0));
                 details.RequestContent = requestContent;
@@ -529,7 +531,8 @@ internal sealed class Middleware
                 else if (!securing || !name.Equals(HeaderNames.StrictTransportSecurity, OrdinalIgnoreCase))
                     context.Response.Headers.Append(name, values.ToArray());
             }
-            if (!HttpMethods.IsHead(context.Request.Method))
+            if (!HttpMethods.IsHead(context.Request.Method) &&
+                !HttpMethods.IsOptions(context.Request.Method))
             {
                 var responseContent = new MemoryPoolStream((int)(response.Content.Headers.ContentLength ?? 0));
                 details.ResponseContent = responseContent;
