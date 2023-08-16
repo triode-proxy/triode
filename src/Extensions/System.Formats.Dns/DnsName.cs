@@ -22,7 +22,7 @@ public readonly struct DnsName
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            var offset = IsPointer ? ReadUInt16BigEndian(Packet.Span[Offset..]) & ~0x3FFF : Offset;
+            var offset = IsPointer ? ReadUInt16BigEndian(Packet.Span[Offset..]) & 0x3FFF : Offset;
             while (offset < Packet.Length)
             {
                 var length = Packet.Span[offset++];
