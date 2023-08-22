@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             ].join('\n')).join(',\n'),
                             `          ],`,
                             `          "content": {`);
-                if (/^HEAD$/i.test(e.request.method)) {
+                if (/^HEAD$/i.test(e.request.method) || e.response.status < 200 || [204, 304].includes(e.response.status)) {
                     await write(`            "size": 0,`,
                                 `            "mimeType": ""`);
                 } else {
@@ -370,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const record = records.get(id);
             console.assert(record);
             const hasreq = !/^(?:A|AAAA|HEAD|GET)$/i.test(method);
-            const hasres = !/^(?:A|AAAA|HEAD)$/i.test(method) && !/^wss?:/.test(uri);
+            const hasres = !/^(?:A|AAAA|HEAD)$/i.test(method) && !/^wss?:/.test(uri) && 200 <= status && ![204, 304].includes(status);
             (hasreq || hasres) && Promise.all([
                 hasreq ? fetch(`?q=${id}`) : Promise.resolve(),
                 hasres ? fetch(`?r=${id}`) : Promise.resolve(),

@@ -532,7 +532,8 @@ internal sealed class Middleware
                     context.Response.Headers.Append(name, values.ToArray());
             }
             if (!HttpMethods.IsHead(context.Request.Method) &&
-                !HttpMethods.IsOptions(context.Request.Method))
+                (int)response.StatusCode >= 200 &&
+                response.StatusCode is not HttpStatusCode.NoContent and not HttpStatusCode.NotModified)
             {
                 var responseContent = new MemoryPoolStream((int)(response.Content.Headers.ContentLength ?? 0));
                 details.ResponseContent = responseContent;
