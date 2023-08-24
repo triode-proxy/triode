@@ -1,19 +1,19 @@
 internal sealed class Hosts
 {
-    private IReadOnlyCollection<(string Host, IPAddress Address)> _hosts = Array.Empty<(string, IPAddress)>();
+    private ILookup<string, IPAddress>? _hosts;
 
     public void Configure(IEnumerable<string> lines) =>
-        Interlocked.Exchange(ref _hosts, Parse(lines).ToArray());
+        Interlocked.Exchange(ref _hosts, Parse(lines).ToLookup(e => e.Host, e => e.Address, StringComparer.OrdinalIgnoreCase));
 
-    public IEnumerable<IPAddress> GetAddresses(string host) =>
-        _hosts.Where(e => e.Host.Equals(host, OrdinalIgnoreCase)).Select(e => e.Address);
+    public IEnumerable<IPAddress> GetAddresses(string host) => _hosts?[host] ?? Array.Empty<IPAddress>();
 
     private static IEnumerable<(string Host, IPAddress Address)> Parse(IEnumerable<string> lines)
     {
         foreach (var line in lines)
         {
             var comment = line.IndexOf('#');
-            var columns = (comment < 0 ? line : line[..comment]).Split(' ', RemoveEmptyEntries | TrimEntries);
+            var columns = (comment < 0 ? line : line[..comment])
+                .Split(new[] { ' ', '\t' }, RemoveEmptyEntries | TrimEntries);
             if (columns.Length < 2 || !IPAddress.TryParse(columns[0], out var address))
                 continue;
             foreach (var host in columns.Skip(1))
