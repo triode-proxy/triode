@@ -2,13 +2,25 @@ namespace System.Formats.Dns;
 
 public readonly struct DnsPacket
 {
-    private static readonly RandomNumberGenerator RNG = RandomNumberGenerator.Create();
-
     public Memory<byte> Memory { get; }
 
-    public Span<byte> Span => Memory.Span;
+    public Span<byte> Span
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Memory.Span;
+    }
 
-    public DnsHeader Header => new(Memory);
+    public DnsHeader Header
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => new(Memory);
+    }
+
+    public DnsPacketType Type
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Header.PacketType;
+    }
 
     public IEnumerable<DnsQuestion> Questions
     {
@@ -47,40 +59,30 @@ public readonly struct DnsPacket
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public DnsPacket(Memory<byte> buffer) => Memory = buffer;
 
-    [SuppressMessage("Performance", "CA1806")]
-    public static DnsPacket CreateQuestion(ReadOnlySpan<char> name, DnsRecordType type, DnsRecordClass @class = DnsRecordClass.IN)
+    public static DnsPacket CreateQuery(ReadOnlySpan<char> name, DnsRecordType type, DnsRecordClass @class = DnsRecordClass.IN)
     {
         var length = DnsHeader.Length + DnsName.GetByteCount(name) + sizeof(DnsRecordType) + sizeof(DnsRecordClass);
         var packet = new DnsPacket(new byte[length]);
-        RNG.GetBytes(packet.Span[0..2]);
-        new DnsHeader(packet.Memory)
-        {
-            IsRecursionDesired = true,
-            QuestionCount      = 1,
-        };
+        DnsHeader.GetBytes(packet.Memory, null, DnsPacketType.Query, rd: true, qdcount: 1);
         var n = DnsName.GetBytes(name, packet.Span[DnsHeader.Length..]);
         WriteUInt16BigEndian(packet.Span.Slice(DnsHeader.Length + n + 0, 2), (ushort)type);
         WriteUInt16BigEndian(packet.Span.Slice(DnsHeader.Length + n + 2, 2), (ushort)@class);
         return packet;
     }
 
-    [SuppressMessage("Performance", "CA1806")]
-    public static DnsPacket CreateAnswer(DnsQuestion question, IEnumerable<(DnsRecordType Type, DnsRecordClass Class, TimeSpan TimeToLive, ReadOnlyMemory<byte> Data)> records)
+    public static DnsPacket CreateResponse(DnsQuestion question, IEnumerable<(DnsRecordType Type, DnsRecordClass Class, TimeSpan TimeToLive, ReadOnlyMemory<byte> Data)> records)
     {
         var source = new DnsPacket(question.Packet);
+        var header = source.Header;
         var offset = DnsHeader.Length + question.Length;
         var length = offset + records.Sum(r => sizeof(ushort) + sizeof(DnsRecordType) + sizeof(DnsRecordClass) + sizeof(uint) + sizeof(ushort) + r.Data.Length);
         var packet = new DnsPacket(new byte[length]);
-        new DnsHeader(packet.Memory)
-        {
-            Id                   = source.Header.Id,
-            IsResponse           = true,
-            OperationCode        = source.Header.OperationCode,
-            IsRecursionDesired   = source.Header.IsRecursionDesired,
-            IsRecursionAvailable = true,
-            QuestionCount        = 1,
-            AnswerCount          = (ushort)records.Count(),
-        };
+        DnsHeader.GetBytes(packet.Memory, header.Id, DnsPacketType.Response,
+            opcode : header.OperationCode,
+            rd     : header.IsRecursionDesired,
+            ra     : true,
+            qdcount: 1,
+            ancount: (ushort)records.Count());
         question.Span.CopyTo(packet.Span[DnsHeader.Length..]);
         foreach (var (type, @class, ttl, data) in records)
         {
@@ -96,32 +98,26 @@ public readonly struct DnsPacket
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DnsPacket CreateAnswer(DnsQuestion question, DnsRecordType type, TimeSpan ttl, IEnumerable<IPAddress> addresses)
+    public static DnsPacket CreateResponse(DnsQuestion question, TimeSpan ttl, IEnumerable<IPAddress> addresses)
     {
-        Debug.Assert(type == DnsRecordType.A    && addresses.All(a => a.AddressFamily == AddressFamily.InterNetwork)
-                  || type == DnsRecordType.AAAA && addresses.All(a => a.AddressFamily == AddressFamily.InterNetworkV6));
-        return CreateAnswer(question, addresses.Select(a => (type, DnsRecordClass.IN, ttl, new ReadOnlyMemory<byte>(a.GetAddressBytes()))));
+        Debug.Assert(addresses.All(a => a.AddressFamily is AddressFamily.InterNetwork or AddressFamily.InterNetworkV6));
+        return CreateResponse(question, addresses.Select(a => (a.AddressFamily == AddressFamily.InterNetwork ? DnsRecordType.A : DnsRecordType.AAAA, DnsRecordClass.IN, ttl, new ReadOnlyMemory<byte>(a.GetAddressBytes()))));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DnsPacket CreateAnswer(DnsQuestion question, DnsRecordType type, TimeSpan ttl, IPAddress address)
+    public static DnsPacket CreateResponse(DnsQuestion question, TimeSpan ttl, params IPAddress[] addresses)
     {
-        return CreateAnswer(question, type, ttl, new[] { address });
+        return CreateResponse(question, ttl, addresses.AsEnumerable());
     }
 
-    [SuppressMessage("Performance", "CA1806")]
-    public static DnsPacket CreateError(DnsHeader header, DnsResponseCode code)
+    public static DnsPacket CreateResponse(DnsHeader header, DnsResponseCode rcode)
     {
         var packet = new DnsPacket(new byte[DnsHeader.Length]);
-        new DnsHeader(packet.Memory)
-        {
-            Id                   = header.Id,
-            IsResponse           = true,
-            OperationCode        = header.OperationCode,
-            IsRecursionDesired   = header.IsRecursionDesired,
-            IsRecursionAvailable = true,
-            ResponseCode         = code,
-        };
+        DnsHeader.GetBytes(packet.Memory, header.Id, DnsPacketType.Response,
+            opcode: header.OperationCode,
+            rd    : header.IsRecursionDesired,
+            ra    : true,
+            rcode : rcode);
         return packet;
     }
 }
