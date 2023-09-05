@@ -31,27 +31,26 @@ internal sealed class Resolver : IDisposable
     {
         if (_v6)
         {
-            var (addrs, ttl, code) = await ResolveAsync(name, DnsRecordType.AAAA, aborted).ConfigureAwait(false);
+            var (addrs, ttl, code) = await ResolveAsync(name, DnsRecordType.AAAA, AddressFamily.InterNetworkV6, aborted).ConfigureAwait(false);
             if (addrs.Count > 0)
                 return (addrs, ttl, code);
         }
-        return await ResolveAsync(name, DnsRecordType.A, aborted).ConfigureAwait(false);
+        return await ResolveAsync(name, DnsRecordType.A, _v6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork, aborted).ConfigureAwait(false);
     }
 
-    public async Task<(IReadOnlyCollection<IPAddress> Addresses, TimeSpan TimeToLive, DnsResponseCode ResponseCode)> ResolveAsync(string name, DnsRecordType type, CancellationToken aborted = default)
+    public async Task<(IReadOnlyCollection<IPAddress> Addresses, TimeSpan TimeToLive, DnsResponseCode ResponseCode)> ResolveAsync(string name, DnsRecordType type, AddressFamily addressFamily, CancellationToken aborted = default)
     {
-        Debug.Assert(type is DnsRecordType.A or DnsRecordType.AAAA);
-        if (_etchosts.CurrentValue.GetAddresses(name) is IEnumerable<IPAddress> addrs && addrs.Any())
+        Debug.Assert(type is DnsRecordType.A or DnsRecordType.AAAA or DnsRecordType.ANY);
+        if (_etchosts.CurrentValue.GetAddresses(name) is IEnumerable<IPAddress> matches && matches.Any())
         {
-            var af = type == DnsRecordType.A ? AddressFamily.InterNetwork : AddressFamily.InterNetworkV6;
-            return (addrs.Where(a => a.AddressFamily == af).ToArray(), _settings.CurrentValue.TTL.Positive, DnsResponseCode.NoError);
+            return (Filter(matches).ToArray(), _settings.CurrentValue.TTL.Positive, DnsResponseCode.NoError);
         }
-        return await _memcache.GetOrCreateAsync((name, type), async entry =>
+        var (caches, ttl, rcode) = await _memcache.GetOrCreateAsync((name, type), async entry =>
         {
             var now = DateTimeOffset.Now;
-            var request = DnsPacket.CreateQuestion(name, type);
-            var response = await SendAsync(request, aborted).ConfigureAwait(false);
-            var answers = response.Answers.Where(a => a.Type == type).ToArray();
+            var query = DnsPacket.CreateQuery(name, type);
+            var response = await SendAsync(query, aborted).ConfigureAwait(false);
+            var answers = response.Answers.Where(a => a.Type is DnsRecordType.A or DnsRecordType.AAAA).ToArray();
             var addrs = answers.Select(a => new IPAddress(a.Data.Span)).ToArray();
             var ttl = answers.Length > 0
                 ? TimeSpan.FromTicks(Math.Min(answers.Min(a => a.TimeToLive).Ticks, _settings.CurrentValue.TTL.Positive.Ticks))
@@ -60,36 +59,45 @@ internal sealed class Resolver : IDisposable
             entry.Size = answers.Sum(a => a.Data.Length);
             return (addrs, ttl, response.Header.ResponseCode);
         }).ConfigureAwait(false);
+        return (Filter(caches).ToArray(), ttl, rcode);
+
+        IEnumerable<IPAddress> Filter(IEnumerable<IPAddress> addresses) => addresses.Where(a => type switch
+        {
+            DnsRecordType.A    => a.AddressFamily == AddressFamily.InterNetwork || addressFamily == AddressFamily.InterNetworkV6,
+            DnsRecordType.AAAA => a.AddressFamily == AddressFamily.InterNetworkV6,
+            DnsRecordType.ANY  => true,
+            _                  => false,
+        });
     }
 
-    public async Task<DnsPacket> SendAsync(DnsPacket request, CancellationToken aborted = default)
+    public async Task<DnsPacket> SendAsync(DnsPacket query, CancellationToken aborted = default)
     {
         var completion = new TaskCompletionSource<UdpReceiveResult>();
-        if (!_completions.TryAdd(request.Header.Id, completion))
+        if (!_completions.TryAdd(query.Header.Id, completion))
         {
             _logger.LogError("DNS packet ID conflicted");
-            return DnsPacket.CreateError(request.Header, DnsResponseCode.ServerFailure);
+            return DnsPacket.CreateResponse(query.Header, DnsResponseCode.ServerFailure);
         }
         try
         {
             var timeout = _settings.CurrentValue.Upstream.Dns.Timeout;
-            await _client.SendAsync(request.Memory, aborted).ConfigureAwait(false);
+            await _client.SendAsync(query.Memory, aborted).ConfigureAwait(false);
             var result = await completion.Task.WithTimeout(timeout, aborted).ConfigureAwait(false);
             var response = new DnsPacket(result.Buffer);
-            if (!response.Header.IsResponse)
-                return DnsPacket.CreateError(request.Header, DnsResponseCode.ServerFailure);
+            if (response.Type != DnsPacketType.Response)
+                return DnsPacket.CreateResponse(query.Header, DnsResponseCode.ServerFailure);
             if (response.Header.IsTruncated)
-                return DnsPacket.CreateError(request.Header, DnsResponseCode.NotImplemented);
+                return DnsPacket.CreateResponse(query.Header, DnsResponseCode.NotImplemented);
             return response;
         }
         catch (TimeoutException)
         {
-            _logger.LogError("Timeout exceeded while resolving {Name}", request.Questions.FirstOrDefault().Name);
-            return DnsPacket.CreateError(request.Header, DnsResponseCode.ServerFailure);
+            _logger.LogError("Timeout exceeded while resolving {Name}", query.Questions.FirstOrDefault().Name);
+            return DnsPacket.CreateResponse(query.Header, DnsResponseCode.ServerFailure);
         }
         finally
         {
-            _completions.TryRemove(request.Header.Id, out _);
+            _completions.TryRemove(query.Header.Id, out _);
         }
     }
 

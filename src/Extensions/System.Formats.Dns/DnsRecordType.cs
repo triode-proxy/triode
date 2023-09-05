@@ -3,12 +3,13 @@ namespace System.Formats.Dns;
 [SuppressMessage("Naming", "CA1720")]
 public enum DnsRecordType : ushort
 {
-    A     = 0x0001,
-    NS    = 0x0002,
-    CNAME = 0x0005,
-    SOA   = 0x0006,
-    PTR   = 0x000C,
-    MX    = 0x000F,
-    TXT   = 0x0010,
-    AAAA  = 0x001C,
+    A     = 1,
+    NS    = 2,
+    CNAME = 5,
+    SOA   = 6,
+    PTR   = 12,
+    MX    = 15,
+    TXT   = 16,
+    AAAA  = 28,
+    ANY   = 255,
 }
