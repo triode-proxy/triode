@@ -5,6 +5,7 @@ global using Microsoft.AspNetCore.ResponseCompression;
 global using Microsoft.AspNetCore.StaticFiles;
 global using Microsoft.Extensions.Caching.Memory;
 global using Microsoft.Extensions.FileProviders;
+global using Microsoft.Extensions.FileProviders.Physical;
 global using Microsoft.Extensions.Hosting;
 global using Microsoft.Extensions.Http;
 global using Microsoft.Extensions.Options;

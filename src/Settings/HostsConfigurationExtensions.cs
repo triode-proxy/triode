@@ -7,10 +7,18 @@ internal static class HostsConfigurationExtensions
     internal static IConfigurationBuilder AddHostsFile(this IConfigurationBuilder builder, bool optional = true, bool reloadOnChange = true) =>
         builder.AddHostsFile(source =>
         {
-            source.FileProvider = new PhysicalFileProvider(SysConfDir);
+            var filters = ExclusionFilters.Sensitive;
+            var provider = new PhysicalFileProvider(SysConfDir, filters);
+            source.FileProvider = provider;
             source.Path = "hosts";
             source.Optional = optional;
             source.ReloadOnChange = reloadOnChange;
+
+            // WORKAROUND: do not watch subdirectories to avoid UnauthorizedAccessException while accessing /etc/**/*
+            var underlying = new FileSystemWatcher(provider.Root, source.Path);
+            var watcher = new PhysicalFilesWatcher(provider.Root, underlying, provider.UsePollingFileWatcher, filters);
+            underlying.IncludeSubdirectories = false;
+            typeof(PhysicalFileProvider).GetProperty("FileWatcher", BindingFlags.Instance | BindingFlags.NonPublic)?.SetValue(provider, watcher);
         });
 
     internal static IConfigurationBuilder AddHostsFile(this IConfigurationBuilder builder, Action<HostsConfigurationSource> configureSource) =>
