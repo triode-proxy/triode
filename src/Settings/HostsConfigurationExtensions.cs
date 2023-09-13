@@ -7,7 +7,7 @@ internal static class HostsConfigurationExtensions
     internal static IConfigurationBuilder AddHostsFile(this IConfigurationBuilder builder, bool optional = true, bool reloadOnChange = true) =>
         builder.AddHostsFile(source =>
         {
-            source.FileProvider = new PhysicalFileProvider(SysConfDir, default);
+            source.FileProvider = new PhysicalFileProvider(SysConfDir);
             source.Path = "hosts";
             source.Optional = optional;
             source.ReloadOnChange = reloadOnChange;
