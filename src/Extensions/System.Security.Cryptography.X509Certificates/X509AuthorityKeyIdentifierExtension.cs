@@ -15,9 +15,8 @@ public sealed class X509AuthorityKeyIdentifierExtension : X509Extension
     public static AsnEncodedData Encode(ReadOnlySpan<byte> authorityKeyIdentifier)
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
-        writer.PushSequence();
-        writer.WriteOctetString(authorityKeyIdentifier, new(TagClass.ContextSpecific, 0));
-        writer.PopSequence();
+        using (writer.PushSequence())
+            writer.WriteOctetString(authorityKeyIdentifier, new(TagClass.ContextSpecific, 0));
         return new(new Oid(Oids.AuthorityKeyIdentifier, "Authority Key Identifier"), writer.Encode());
     }
 }
