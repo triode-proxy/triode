@@ -8,6 +8,7 @@ internal sealed class Authority : IDisposable
     private readonly ConcurrentDictionary<string, object> _locks = new();
 
     private volatile X509Certificate2 _ca;
+    private volatile byte[] _crl;
 
     public X509Certificate2 Certificate
     {
@@ -19,12 +20,19 @@ internal sealed class Authority : IDisposable
                 lock (_locks)
                 {
                     if (_ca.NotAfter < tomorrow)
+                    {
                         Interlocked.Exchange(ref _ca, IssueAuthorityCertificate()).Dispose();
+                        Interlocked.Exchange(ref _crl, BuildCertificateRevocationList(_ca));
+                    }
                 }
             }
             return _ca;
         }
     }
+
+    public Memory<byte> CertificateRevocationList => _crl;
+
+    public ICollection<Uri> CrlDistributionPoints { get; } = new List<Uri>();
 
     public Authority(ILogger<Authority> logger)
     {
@@ -38,6 +46,7 @@ internal sealed class Authority : IDisposable
                      && c.GetCertificateAuthority() == true
                      && c.GetSubjectKeyIdentifier() is not null)
             .MaxBy(c => c.NotAfter) ?? IssueAuthorityCertificate();
+        _crl = BuildCertificateRevocationList(_ca);
     }
 
     public void Dispose()
@@ -73,6 +82,7 @@ internal sealed class Authority : IDisposable
         return _store.Certificates
             .Where(c => c.HasPrivateKey
                      && c.IsValid(now)
+                     && c.GetCrlDistributionPoints().SequenceEqual(CrlDistributionPoints)
                      && c.GetEnhancedKeyUsages().Any(oid => oid.Value == Oids.ServerAuth)
                      && c.GetSubjectAltNames().Intersect(sans).Any())
             .MaxBy(c => c.NotAfter);
@@ -97,6 +107,8 @@ internal sealed class Authority : IDisposable
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(new PublicKey(key), false));
         req.CertificateExtensions.Add(new X509AuthorityKeyIdentifierExtension(aid, false));
         req.CertificateExtensions.Add(sans.Build());
+        if (CrlDistributionPoints.Count > 0)
+            req.CertificateExtensions.Add(CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(CrlDistributionPoints.Select(uri => uri.OriginalString), false));
         using var pub = req.Create(ca, now, now + validity, Guid.NewGuid().ToByteArray());
         using var pfx = pub.CopyWithPrivateKey(key);
         var cert = pfx.CopyWithKeyStorageFlags(X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
@@ -120,5 +132,16 @@ internal sealed class Authority : IDisposable
         _store.Add(cert);
         _logger.LogInformation("Issued CA certificate: {Subject}", subject.Name);
         return cert;
+    }
+
+    private static byte[] BuildCertificateRevocationList(X509Certificate2 ca)
+    {
+        return new CertificateRevocationListBuilder().Build(
+            ca,
+            0,
+            ca.NotAfter,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1,
+            ca.NotBefore);
     }
 }

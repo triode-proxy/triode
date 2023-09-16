@@ -15,6 +15,7 @@ internal sealed class Middleware
     private static readonly Regex UriSchemeHttpPattern = new("^http(?=:)", Compiled | CultureInvariant);
     private static readonly Regex UriSchemeHttpsPattern = new("^https(?=:)", Compiled | CultureInvariant);
     private static readonly Wildcard CertificatePattern = new("*.crt", IgnoreCase | Compiled | CultureInvariant);
+    private static readonly Wildcard CrlPattern = new("*.crl", IgnoreCase | Compiled | CultureInvariant);
     private static readonly Regex CommonNamePattern = new(@"(?<=\bCN=)([^,]+)", Compiled | CultureInvariant);
     private static readonly Regex UnsafeCharPattern = new(@"[\s""#*/:<>?\\|]+", Compiled | CultureInvariant);
 
@@ -119,6 +120,9 @@ internal sealed class Middleware
         _hostnames = hostname.Contains('.') || _intranets.Count == 0
             ? new[] { hostname }
             : new[] { hostname, $"{hostname}.local" };
+        _authority.CrlDistributionPoints.AddRange(
+            _hostnames.Select(hostname => new UriBuilder(Uri.UriSchemeHttp, hostname) { Path = "/root.crl" }.Uri)
+            );
 
         var resource = new StaticFileMiddleware(next, env,
             Options.Create(new StaticFileOptions().WithCacheControl(env.IsDevelopment()
@@ -313,6 +317,15 @@ internal sealed class Middleware
             context.Response.ContentLength = data.Length;
             context.Response.ContentType = "application/x-pem-file";
             context.Response.GetTypedHeaders().ContentDisposition = new("attachment") { FileName = $"{name}.crt" };
+            if (!HttpMethods.IsHead(context.Request.Method))
+                await context.Response.Body.WriteAsync(data, aborted).ConfigureAwait(false);
+            return;
+        }
+        if (CrlPattern.IsMatch(context.Request.Path))
+        {
+            var data = _authority.CertificateRevocationList;
+            context.Response.ContentLength = data.Length;
+            context.Response.ContentType = "application/pkix-crl";
             if (!HttpMethods.IsHead(context.Request.Method))
                 await context.Response.Body.WriteAsync(data, aborted).ConfigureAwait(false);
             return;

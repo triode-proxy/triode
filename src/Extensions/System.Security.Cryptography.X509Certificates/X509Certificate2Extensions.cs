@@ -24,6 +24,22 @@ public static class X509Certificate2Extensions
         return certificate.Extensions.OfType<X509BasicConstraintsExtension>().FirstOrDefault()?.CertificateAuthority;
     }
 
+    public static IEnumerable<Uri> GetCrlDistributionPoints(this X509Certificate2 certificate)
+    {
+        var rawData = certificate.Extensions.FirstOrDefault(x => x.Oid?.Value == Oids.CrlDistributionPoints)?.RawData;
+        if (rawData is null)
+            yield break;
+        var reader = new AsnReader(rawData, AsnEncodingRules.BER).ReadSequence();
+        while (reader.HasData)
+        {
+            var uri = reader.ReadSequence()
+                .ReadSequence(new(TagClass.ContextSpecific, 0))
+                .ReadSequence(new(TagClass.ContextSpecific, 0))
+                .ReadCharacterString(UniversalTagNumber.IA5String, new(TagClass.ContextSpecific, 6));
+            yield return new(uri, UriKind.Absolute);
+        }
+    }
+
     public static IEnumerable<Oid> GetEnhancedKeyUsages(this X509Certificate2 certificate)
     {
         return certificate.Extensions.OfType<X509EnhancedKeyUsageExtension>().FirstOrDefault()?.EnhancedKeyUsages?.Cast<Oid>() ?? Array.Empty<Oid>();
