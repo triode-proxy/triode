@@ -48,6 +48,7 @@ web.Services.AddSingleton<Resolver>();
 web.Services.AddHostedService<Service>();
 web.WebHost.ConfigureKestrel(kestrel =>
 {
+    var memcache = kestrel.ApplicationServices.GetRequiredService<IMemoryCache>();
     var authority = kestrel.ApplicationServices.GetRequiredService<Authority>();
     kestrel.AddServerHeader = false;
     kestrel.ConfigureHttpsDefaults(https =>
@@ -58,7 +59,15 @@ web.WebHost.ConfigureKestrel(kestrel =>
                 name = (connection?.LocalEndPoint as IPEndPoint)?.Address?.ToString();
             if (name is null)
                 return null;
-            return authority.GetServerCertificate(name);
+            return memcache.GetOrCreate<X509Certificate2>((nameof(X509Certificate2), name), entry =>
+            {
+                var cert = authority.GetServerCertificate(name);
+                entry.SetOptions(new MemoryCacheEntryOptions()
+                    .DisposeOnEvicted()
+                    .SetAbsoluteExpiration(cert.NotAfter)
+                    .SetSize(Unsafe.SizeOf<X509Certificate2>()));
+                return cert;
+            });
         };
     });
 });
