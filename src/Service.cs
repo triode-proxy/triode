@@ -13,7 +13,7 @@ internal sealed class Service : BackgroundService
         _settings = settings;
         _records = records;
         _resolver = resolver;
-        _hostname = Dns.GetHostName();
+        _hostname = Dns.GetHostName().ToLowerInvariant();
         _networks = NetworkInterface.GetAllNetworkInterfaces()
             .Where(ni => ni.OperationalStatus == OperationalStatus.Up
                       && ni.NetworkInterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.Loopback or NetworkInterfaceType.Wireless80211)
