@@ -59,7 +59,7 @@ internal sealed class Middleware
     private readonly Authority _authority;
     private readonly Resolver _resolver;
 
-    private readonly string _hostname;
+    private readonly IReadOnlyCollection<string> _hostnames;
     private readonly IReadOnlyCollection<IPAddress> _addresses;
     private readonly IReadOnlyCollection<IPNetwork> _intranets;
     private readonly ResponseCompressionMiddleware _resource;
@@ -105,7 +105,7 @@ internal sealed class Middleware
         _authority = authority;
         _resolver = resolver;
 
-        _hostname = Dns.GetHostName();
+        var hostname = Dns.GetHostName().ToLowerInvariant();
         var addresses = NetworkInterface.GetAllNetworkInterfaces()
             .Where(ni => ni.OperationalStatus == OperationalStatus.Up
                       && ni.NetworkInterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211)
@@ -116,6 +116,10 @@ internal sealed class Middleware
         _intranets = addresses.Where(uni => uni.Address.IsIPv6UniqueLocal || PrivateNetworks.Any(n => n.Contains(uni.Address)))
                               .Select(uni => new IPNetwork(uni.Address, uni.PrefixLength))
                               .ToArray();
+        _hostnames = hostname.Contains('.') || _intranets.Count == 0
+            ? new[] { hostname }
+            : new[] { hostname, $"{hostname}.local" };
+
         var resource = new StaticFileMiddleware(next, env,
             Options.Create(new StaticFileOptions().WithCacheControl(env.IsDevelopment()
                 ? CacheControlHeaderValue.NoStoreString
@@ -625,7 +629,7 @@ internal sealed class Middleware
     {
         if (name.Equals("localhost", OrdinalIgnoreCase))
             return new[] { IPAddress.Loopback, IPAddress.IPv6Loopback };
-        if (name.Equals(_hostname, OrdinalIgnoreCase))
+        if (_hostnames.Contains(name, StringComparer.OrdinalIgnoreCase))
             return _addresses;
         if (IPAddress.TryParse(name, out var addr))
             return new[] { addr };
