@@ -42,9 +42,7 @@ internal sealed class Resolver : IDisposable
     {
         Debug.Assert(type is DnsRecordType.A or DnsRecordType.AAAA or DnsRecordType.ANY);
         if (_etchosts.CurrentValue.GetAddresses(name) is IEnumerable<IPAddress> matches && matches.Any())
-        {
             return (Filter(matches).ToArray(), _settings.CurrentValue.TTL.Positive, DnsResponseCode.NoError);
-        }
         var (caches, ttl, rcode) = await _memcache.GetOrCreateAsync((name, type), async entry =>
         {
             var now = DateTimeOffset.Now;
@@ -63,8 +61,8 @@ internal sealed class Resolver : IDisposable
 
         IEnumerable<IPAddress> Filter(IEnumerable<IPAddress> addresses) => addresses.Where(a => type switch
         {
-            DnsRecordType.A    => a.AddressFamily == AddressFamily.InterNetwork || addressFamily == AddressFamily.InterNetworkV6,
-            DnsRecordType.AAAA => a.AddressFamily == AddressFamily.InterNetworkV6,
+            DnsRecordType.A    => a.AddressFamily is AddressFamily.InterNetwork or AddressFamily.InterNetworkV6,
+            DnsRecordType.AAAA => a.AddressFamily is AddressFamily.InterNetworkV6,
             DnsRecordType.ANY  => true,
             _                  => false,
         });
