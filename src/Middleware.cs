@@ -569,6 +569,7 @@ internal sealed class Middleware
                         context.Response.ContentLength = body.Length;
                         context.Response.Headers.Remove(HeaderNames.ContentMD5);
                         await context.Response.Body.WriteAsync(body, aborted).ConfigureAwait(false);
+                        bodyBytesSent = body.Length;
                     }
                     else
                     {
@@ -579,6 +580,7 @@ internal sealed class Middleware
                         context.Response.ContentLength = body.Length;
                         context.Response.Headers.Remove(HeaderNames.ContentMD5);
                         await context.Response.Body.WriteAsync(body, aborted).ConfigureAwait(false);
+                        bodyBytesSent = body.Length;
                     }
                 }
                 else
