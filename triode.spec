@@ -8,7 +8,7 @@
 %endif
 
 Name:              triode
-Version:           0.1.0
+Version:           0.2.0
 Release:           0%{?dist}
 Summary:           DNS-based selective HTTP debugging proxy
 License:           AGPLv3
@@ -97,6 +97,13 @@ exit 0
 %{_sbindir}/triode-trace
 
 %changelog
+* Wed Sep 20 2023 MALU <contact@andantissimo.jp> - 0.2.0-0
+- add ANY query support
+- accept mDNS hostname
+- add custom reason phrase support
+- add CRL Distribution Point support
+- and some fixes
+
 * Sat Aug  5 2023 MALU <contact@andantissimo.jp> - 0.1.0-0
 - substitute both request and response bodies
 - simplify DNS TTLs
