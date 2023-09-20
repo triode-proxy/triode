@@ -1,9 +1,9 @@
-internal record Record(string Id, long Time, IPAddress? From, string Method, string Uri, string Protocol, int Status, long Size, long Elapsed,
+internal record Record(string Id, long Time, IPAddress? From, string Method, string Uri, string Protocol, int Status, string? Phrase, long Size, long Elapsed,
     IEnumerable<KeyValuePair<string, StringValues>> RequestHeaders, IEnumerable<KeyValuePair<string, StringValues>> ResponseHeaders)
 {
     internal ReadOnlyMemory<byte> Memory => JsonSerializer.SerializeToUtf8Bytes(new object[]
     {
-        Id, Time, $"{From}", Method, Uri, Protocol, Status, Size, Elapsed, Flatten(RequestHeaders), Flatten(ResponseHeaders),
+        Id, Time, $"{From}", Method, Uri, Protocol, Status, $"{Phrase}", Size, Elapsed, Flatten(RequestHeaders), Flatten(ResponseHeaders),
     });
 
     private static IEnumerable<IEnumerable<string>> Flatten(IEnumerable<KeyValuePair<string, StringValues>> headers)

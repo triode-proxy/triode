@@ -224,6 +224,7 @@ internal sealed class Middleware
                 context.Request.GetRawUri(),
                 context.Request.Protocol,
                 aborted.IsCancellationRequested ? Status499Aborted : context.Response.StatusCode,
+                aborted.IsCancellationRequested ? "Aborted" : context.Features.Get<IHttpResponseFeature>()?.ReasonPhrase,
                 context.Items.TryGetValue(BodyBytesSentKey, out var sent) ? (long)sent! : default,
                 stopwatch.ElapsedMilliseconds,
                 context.Request.Headers.ExceptBy(Http2PseudoHeaders, p => p.Key).ToArray(),
@@ -361,6 +362,7 @@ internal sealed class Middleware
         if (response.Content is null)
             throw new WebSocketException(WebSocketError.ConnectionClosedPrematurely);
         context.Response.StatusCode = Status101SwitchingProtocols;
+        context.Features.Get<IHttpResponseFeature>()!.ReasonPhrase = response.ReasonPhrase;
         foreach (var (name, values) in response.Headers
             .ExceptBy(NonPropagatableHeaders.Except(HeaderNames.Connection), p => p.Key, StringComparer.OrdinalIgnoreCase))
         {
@@ -380,6 +382,7 @@ internal sealed class Middleware
             context.Request.GetRawUri(),
             context.Request.Protocol,
             context.Response.StatusCode,
+            context.Features.Get<IHttpResponseFeature>()?.ReasonPhrase,
             default,
             stopwatch.ElapsedMilliseconds,
             context.Request.Headers.ExceptBy(Http2PseudoHeaders, p => p.Key).ToArray(),
@@ -445,6 +448,7 @@ internal sealed class Middleware
                 string.Empty,
                 string.Empty,
                 opcode,
+                null,
                 length * (masked ? -1 : +1),
                 default,
                 Array.Empty<KeyValuePair<string, StringValues>>(),
@@ -517,6 +521,7 @@ internal sealed class Middleware
             }
             using var response = await client.SendAsync(request, ResponseHeadersRead, aborted).ConfigureAwait(false);
             context.Response.StatusCode = (int)response.StatusCode;
+            context.Features.Get<IHttpResponseFeature>()!.ReasonPhrase = response.ReasonPhrase;
             bool ShouldBeInsecure(string? value)
                 => Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
                 && rules.TryGetValue(uri.Host, out var behavior) && behavior == Behavior.Secure;

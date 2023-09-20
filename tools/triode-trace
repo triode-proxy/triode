@@ -74,7 +74,7 @@ def trace():
             break
         if opcode != 0x1:
             continue
-        [id, time, addr, method, uri, protocol, status, size, elapsed, reqhdrs, reshdrs] = loads(payload)
+        [id, time, addr, method, uri, protocol, status, phrase, size, elapsed, reqhdrs, reshdrs] = loads(payload)
         print('%s - - [%s] "%s %s %s" %d %d "%s" "%s"' %
               (addr, format_time(time / 1000), method, escape(uri), protocol, status, size,
                get_header(reqhdrs, 'Referer'), get_header(reqhdrs, 'User-Agent')))

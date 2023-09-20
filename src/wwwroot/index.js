@@ -1,50 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const rcodes = {
-        0: 'NOERROR',
-        1: 'FORMERR',
-        2: 'SERVFAIL',
-        3: 'NXDOMAIN',
-        4: 'NOTIMP',
-        5: 'REFUSED',
-    };
-    const phrases = {
-        200: 'OK',
-        201: 'Created',
-        202: 'Accepted',
-        204: 'No Content',
-        206: 'Partial Content',
-        301: 'Moved Permanently',
-        302: 'Found',
-        303: 'See Other',
-        304: 'Not Modified',
-        307: 'Temporary Redirect',
-        308: 'Permanent Redirect',
-        400: 'Bad Request',
-        401: 'Unauthorized',
-        403: 'Forbidden',
-        404: 'Not Found',
-        405: 'Method Not Allowed',
-        406: 'Not Acceptable',
-        408: 'Request Timeout',
-        409: 'Conflict',
-        410: 'Gone',
-        411: 'Length Required',
-        412: 'Precondition Failed',
-        413: 'Payload Too Large',
-        414: 'URI Too Long',
-        415: 'Unsupported Media Type',
-        416: 'Range Not Satisfiable',
-        426: 'Upgrade Required',
-        429: 'Too Many Requests',
-        431: 'Request Header Fields Too Large',
-        451: 'Unavailable For Legal Reasons',
-        499: 'Client Closed',
-        500: 'Internal Server Error',
-        501: 'Not Implemented',
-        502: 'Bad Gateway',
-        503: 'Service Unavailable',
-        504: 'Gateway Timeout',
-    };
     const opcodes = {
         0x0: '', // Continuation
         0x1: 'Text',
@@ -119,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
      *     elapsed: number;
      *     protocol: string;
      *     request: { method: string, uri: string, headers: string, body?: string };
-     *     response: { status: number, headers: string, body?: string | Node };
+     *     response: { status: number, phrase: string, headers: string, body?: string | Node };
      *     messages: { code: number, size: number, time: number }[];
      * }>}
      */
@@ -254,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             `        },`,
                             `        "response": {`,
                             `          "status": ${e.response.status},`,
-                            `          "statusText": "${phrases[e.response.status] ?? ''}",`,
+                            `          "statusText": "${e.response.phrase}",`,
                             `          "httpVersion": "${e.protocol}",`,
                             `          "cookies": [],`,
                             `          "headers": [`,
@@ -328,8 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = new WebSocket(location.href.replace(/^http/, 'ws'));
     socket.addEventListener('message', e => {
         const bottom = table.scrollTop >= table.scrollHeight - table.getBoundingClientRect().height;
-        /** @type {[string, number, string, string, string, string, number, number, number, string[][], string[][]]} */
-        const [id, time, from, method, uri, protocol, status, size, elapsed, reqhdrs, reshdrs] = JSON.parse(e.data);
+        /** @type {[string, number, string, string, string, string, number, string, number, number, string[][], string[][]]} */
+        const [id, time, from, method, uri, protocol, status, phrase, size, elapsed, reqhdrs, reshdrs] = JSON.parse(e.data);
         if (!uri) {
             records.get(id)?.messages?.push({ code: status, size, time });
             if (id === aside.dataset.id)
@@ -347,7 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             response: {
                 status,
-                headers: reshdrs.reduce((s, [k, v]) => `${s}\n${k}: ${v}`, `${protocol} ${status} ${rcodes[status] ?? phrases[status] ?? ''}`),
+                phrase,
+                headers: reshdrs.reduce((s, [k, v]) => `${s}\n${k}: ${v}`, `${protocol} ${status} ${phrase}`),
             },
             messages: [],
         });
