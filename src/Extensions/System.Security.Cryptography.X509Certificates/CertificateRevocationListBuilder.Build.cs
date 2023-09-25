@@ -38,7 +38,8 @@ public sealed partial class CertificateRevocationListBuilder
             throw new ArgumentException("The value cannot be an empty string.", nameof(hashAlgorithm));
         if (issuerCertificate.GetCertificateAuthority() != true)
             throw new ArgumentException("The issuer certificate does not have an appropriate value for the Basic Constraints extension.", nameof(issuerCertificate));
-        if ((issuerCertificate.GetKeyUsages() & X509KeyUsageFlags.CrlSign) == 0)
+        var keyUsages = issuerCertificate.GetKeyUsages();
+        if (keyUsages != 0 && (keyUsages & X509KeyUsageFlags.CrlSign) == 0)
             throw new ArgumentException("The issuer certificate's Key Usage extension does not contain the CrlSign flag.", nameof(issuerCertificate));
         var subjectKeyIdentifier = issuerCertificate.GetSubjectKeyIdentifier() ??
             throw new ArgumentException("The issuer certificate does not have the Subject Key Identifier extension.", nameof(issuerCertificate));
