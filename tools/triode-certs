@@ -61,7 +61,7 @@ def import_certificate(certfile, keyfile, storedir):
     hide(pfxfile)
     return 1
 
-def import_letsencrypt():
+def import_certificates():
     storedir = get_store_dir()
     if not access(storedir, W_OK):
         raise RuntimeError("'%s' access denied" % storedir)
@@ -115,7 +115,7 @@ def main():
     options = parser.parse_args()
     try:
         if options.import_:
-            import_letsencrypt()
+            import_certificates()
         elif options.list:
             list_certificates(options.order_by_time)
         else:
