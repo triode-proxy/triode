@@ -3,7 +3,7 @@
 * { appearance: none; background: unset; border: none; box-sizing: border-box; color: unset; font-weight: normal; margin: 0; outline: none; padding: 0; }
 html { height: 100%; }
 body { background: #fff; color: #1b1b1b; font-family: system-ui; font-size: 12px; height: 100%; overflow: hidden; }
-form { height: 100%; position: relative; }
+body > form { height: 100%; position: relative; }
 input { display: inline-block; font-family: "Material Symbols Outlined"; font-size: 20px; font-weight: 300; line-height: 20px; padding: 1px 2px; vertical-align: bottom; -webkit-font-smoothing: antialiased; }
 input:hover { background: #eaeaea; }
 input:active { background: #e0e0e0; }
@@ -39,8 +39,8 @@ aside header { background: #f7f7f7; border-bottom: 1px solid #cacdd1; }
 aside pre { overflow: auto; padding: 2px 4px; }
 aside pre code { cursor: pointer; }
 dialog { background: #f6f6f6; border-radius: 8px; color: #101010; font-size: 14px; height: calc(100% - 8px); left: 4px; opacity: .75; top: 4px; width: calc(100% - 8px); z-index: 3; }
-dialog input { position: absolute; right: 0; top: 0; }
-dialog input:disabled { visibility: hidden; }
+dialog > form input { position: absolute; right: 0; top: 0; }
+dialog > form input:disabled { visibility: hidden; }
 dialog section { padding: 8px; }
 dialog h1 { font-size: 20px; margin-bottom: 8px; }
 dialog ol { margin-left: 20px; }
