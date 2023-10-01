@@ -2,6 +2,8 @@
 
 DNS-based selective HTTP debugging proxy
 
+![Demo](./triode.gif)
+
 ## Build Requirements
 
 * [.NET 6 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
