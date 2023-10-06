@@ -12,12 +12,13 @@ internal sealed class Middleware
     private const string Brotli = "br";
 
     private static readonly string ResourceCacheControl = new CacheControlHeaderValue { Public = true, MaxAge = TimeSpan.FromDays(1) }.ToString();
+    private static readonly PathString ResolvConfPath = new("/resolv.conf");
     private static readonly Regex UriSchemeHttpPattern = new("^http(?=:)", Compiled | CultureInvariant);
     private static readonly Regex UriSchemeHttpsPattern = new("^https(?=:)", Compiled | CultureInvariant);
-    private static readonly Wildcard CertificatePattern = new("*.crt", IgnoreCase | Compiled | CultureInvariant);
-    private static readonly Wildcard CrlPattern = new("*.crl", IgnoreCase | Compiled | CultureInvariant);
     private static readonly Regex CommonNamePattern = new(@"(?<=\bCN=)([^,]+)", Compiled | CultureInvariant);
     private static readonly Regex UnsafeCharPattern = new(@"[\s""#*/:<>?\\|]+", Compiled | CultureInvariant);
+    private static readonly Wildcard CertificatePattern = new("*.crt", IgnoreCase | Compiled | CultureInvariant);
+    private static readonly Wildcard CrlPattern = new("*.crl", IgnoreCase | Compiled | CultureInvariant);
 
     private static readonly object BodyBytesSentKey = new();
     private static readonly long MaxDetailsCacheSize = Math.Min(MemoryPool<byte>.Shared.MaxBufferSize, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 8);
@@ -330,7 +331,7 @@ internal sealed class Middleware
                 await context.Response.Body.WriteAsync(data, aborted).ConfigureAwait(false);
             return;
         }
-        if (context.Request.Path == "/resolv.conf")
+        if (context.Request.Path == ResolvConfPath)
         {
             var name = context.Request.Host.Host;
             var addrs = IPAddress.TryParse(name, out var addr) ? new[] { addr }
