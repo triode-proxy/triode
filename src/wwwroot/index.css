@@ -4,7 +4,9 @@
 html { height: 100%; }
 body { background: #fff; color: #1b1b1b; font-family: system-ui; font-size: 12px; height: 100%; overflow: hidden; }
 body > form { height: 100%; position: relative; }
-input { display: inline-block; font-family: "Material Symbols Outlined"; font-size: 20px; font-weight: 300; line-height: 20px; padding: 1px 2px; vertical-align: bottom; -webkit-font-smoothing: antialiased; }
+input[type="button"],
+input[type="reset"],
+input[type="submit"] { display: inline-block; font-family: "Material Symbols Outlined"; font-size: 20px; font-weight: 300; line-height: 20px; padding: 1px 2px; vertical-align: bottom; -webkit-font-smoothing: antialiased; }
 input:hover { background: #eaeaea; }
 input:active { background: #e0e0e0; }
 pre, code { font-family: Consolas, Menlo, monospace; font-size: 11px; }
@@ -15,24 +17,25 @@ thead th input + input { margin-left: 2px; }
 tbody tr:nth-child(odd) { background: #f5f5f5; }
 tbody tr:hover { background: #f0f6fd; }
 tbody tr.error { color: #ff1500; }
-th:nth-child(1) { padding: 0 2px; min-width: 60px; }
-th:nth-child(2) { min-width: 80px; }
-th:nth-child(3) { width: 100%; }
-th:nth-child(4) { min-width: 60px; }
-th:nth-child(5) { min-width: 80px; }
-th:nth-child(6) { min-width: 80px; }
-th:nth-child(7) { min-width: 120px; }
-th:nth-child(8) { min-width: 200px; }
-th:last-child input { float: right; margin: -4px 0; }
-td:nth-child(2) { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
-td:nth-child(3) { border-right: none; min-width: 40px; text-align: right; }
-td:nth-child(4) { border-left: none; max-width: 0; overflow: hidden; text-overflow: ellipsis; width: 100%; }
-td:nth-child(6) { text-align: right; }
-td:nth-child(6):not(:empty)::after { content: " B"; }
-td:nth-child(7) { text-align: right; }
-td:nth-child(7):not(:empty)::after { content: " ms"; }
-td:nth-child(8) { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-td:nth-child(9) { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+[name="network"] th:nth-child(1) { padding: 0 2px; min-width: 60px; }
+[name="network"] th:nth-child(2) { min-width: 80px; }
+[name="network"] th:nth-child(3) { width: 100%; }
+[name="network"] th:nth-child(4) { min-width: 60px; }
+[name="network"] th:nth-child(5) { min-width: 80px; }
+[name="network"] th:nth-child(6) { min-width: 80px; }
+[name="network"] th:nth-child(7) { min-width: 120px; }
+[name="network"] th:nth-child(8) { min-width: 200px; }
+[name="network"] th:last-child input { float: right; margin: -4px 0; }
+[name="network"] th:last-child input + input { margin-right: 2px; }
+[name="network"] td:nth-child(2) { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+[name="network"] td:nth-child(3) { border-right: none; min-width: 40px; text-align: right; }
+[name="network"] td:nth-child(4) { border-left: none; max-width: 0; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+[name="network"] td:nth-child(6) { text-align: right; }
+[name="network"] td:nth-child(6):not(:empty)::after { content: " B"; }
+[name="network"] td:nth-child(7) { text-align: right; }
+[name="network"] td:nth-child(7):not(:empty)::after { content: " ms"; }
+[name="network"] td:nth-child(8) { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+[name="network"] td:nth-child(9) { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
 aside { background: #fff; border-left: 2px solid #c8cbcf; display: none; grid-template-rows: auto 1fr; height: 100%; position: absolute; right: 0; width: 50%; z-index: 2; }
 aside[data-id] { display: grid; }
 aside header { background: #f7f7f7; border-bottom: 1px solid #cacdd1; }
@@ -41,10 +44,13 @@ aside pre code { cursor: pointer; }
 dialog { background: #f6f6f6; border-radius: 8px; color: #101010; font-size: 14px; height: calc(100% - 8px); left: 4px; opacity: .75; top: 4px; width: calc(100% - 8px); z-index: 3; }
 dialog > form input { position: absolute; right: 0; top: 0; }
 dialog > form input:disabled { visibility: hidden; }
-dialog section { padding: 8px; }
+dialog section { display: none; padding: 8px; }
 dialog h1 { font-size: 20px; margin-bottom: 8px; }
 dialog ol { margin-left: 20px; }
 dialog ol li + li { margin-top: 4px; }
+dialog table { font-size: 12px; min-width: inherit; }
+dialog.help section.help,
+dialog.settings section.settings { display: block; }
 @media (prefers-color-scheme: dark) {
     body { background: #202124; color: #fff; }
     input:hover { background: #484848; }

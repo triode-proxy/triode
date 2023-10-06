@@ -13,7 +13,7 @@
             <thead>
                 <tr>
                     <th><input type="reset" value="block"><input type="button" name="download" value="download"></th>
-                    <th>From</th><th colspan="2">Request</th><th>Status</th><th>Size</th><th>Time</th><th>Referer</th><th>User-Agent <input type="button" name="help" value="help"></th>
+                    <th>From</th><th colspan="2">Request</th><th>Status</th><th>Size</th><th>Time</th><th>Referer</th><th>User-Agent <input type="button" name="help" value="help"><input type="button" name="settings" value="settings"></th>
                 </tr>
             </thead>
             <tbody>
@@ -28,13 +28,34 @@
         <form method="dialog">
             <input type="submit" name="close" value="close">
         </form>
-        <section>
+        <section class="help">
             <h1>Usage</h1>
             <ol>
                 <li>Download the <a href="root.crt">Root CA certificate</a> and install it as a trusted root CA.</li>
                 <li>Configure DNS addresses to <data class="nameservers"></data>.</li>
                 <li>Restart the browser.</li>
             </ol>
+        </section>
+        <section class="settings">
+            <h1>Filters</h1>
+            <form name="filters">
+                <table>
+                    <thead>
+                        <tr><th>Method</th><th>Host</th><th>Path</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                    <template>
+                        <tr>
+                            <td><input type="text" name="filter[][method]" size="8" placeholder="GET"></td>
+                            <td><input type="text" name="filter[][host]" size="20" placeholder="triode-proxy.com"></td>
+                            <td><input type="text" name="filter[][path]" size="80" placeholder="/*"></td>
+                            <td><input type="text" name="filter[][status]" size="5" maxlength="3" placeholder="404"></td>
+                        </tr>
+                    </template>
+                </table>
+                <button type="submit"></button>
+            </form>
         </section>
     </dialog>
     <script src="index.js" type="module"></script>

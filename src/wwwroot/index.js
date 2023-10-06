@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         0xA: 'Pong',
     };
     const network = document.forms.namedItem('network');
+    const filters = document.forms.namedItem('filters');
     const table = network.querySelector('table');
     const aside = network.querySelector('aside');
     const icase = new Intl.Collator('en', { sensitivity: 'base' });
@@ -83,8 +84,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const dialog = document.querySelector('dialog');
         const resolv = await (await fetch('resolv.conf')).text();
         const nameservers = [...resolv.matchAll(/^nameserver (.+)$/gm)].map(([_, a]) => a);
+        dialog.className = 'help';
         dialog.querySelector('form').elements.namedItem('close').disabled = !closable;
         dialog.querySelector('.nameservers').textContent = nameservers.join(', ');
+        dialog.show();
+    }
+    function settings() {
+        const dialog = document.querySelector('dialog');
+        dialog.className = 'settings';
+        dialog.querySelector('form').elements.namedItem('close').disabled = false;
         dialog.show();
     }
     function render() {
@@ -259,6 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
             await stream.close();
         }
     })
+    network.elements.namedItem('settings').addEventListener('click', e => {
+        e.preventDefault();
+        settings();
+    });
     network.elements.namedItem('help').addEventListener('click', e => {
         e.preventDefault();
         void help();
@@ -267,6 +279,30 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         delete aside.dataset.id;
     });
+
+    const append = (focus = false) => {
+        filters.querySelector('table').tBodies[0].appendChild(
+            filters.querySelector('template').content.cloneNode(true)
+            );
+        focus && filters.querySelector('tbody tr:last-child input').focus();
+    };
+    filters.addEventListener('keydown', e => {
+        if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === 'Tab' &&
+            e.target === filters.querySelector('tbody tr:last-child td:last-child input')) {
+            e.preventDefault();
+            append(true);
+        }
+    });
+    filters.addEventListener('submit', async e => {
+        e.preventDefault();
+        void fetch('./', { method: 'POST', body: new FormData(e.target) });
+        for (const tr of filters.querySelectorAll('tbody tr')) {
+            if ([...tr.querySelectorAll('input')].every(input => input.value === ''))
+                tr.remove();
+        }
+        append(true);
+    });
+    append();
 
     if (location.protocol !== 'https:') {
         const favicon = new Image;
