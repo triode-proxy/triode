@@ -136,10 +136,9 @@ internal sealed class Middleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        var (stopwatch, time) = (Stopwatch.StartNew(), DateTimeOffset.Now);
         var (aborted, stopping) = (context.RequestAborted, _lifetime.ApplicationStopping);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(aborted, stopping);
-        var time = DateTimeOffset.Now;
-        var stopwatch = Stopwatch.StartNew();
         try
         {
             var addrs = await GetAddressesAsync(context.Request.Host.Host, linked.Token).ConfigureAwait(false);
@@ -349,8 +348,7 @@ internal sealed class Middleware
 
     private async Task ProxyWebSocketMessagesAsync(HttpContext context, CancellationToken aborted)
     {
-        var time = DateTimeOffset.Now;
-        var stopwatch = Stopwatch.StartNew();
+        var (stopwatch, time) = (Stopwatch.StartNew(), DateTimeOffset.Now);
         var upgrader = context.Features.Get<IHttpUpgradeFeature>();
         if (upgrader?.IsUpgradableRequest != true)
             throw new ArgumentException("Request not upgradable", nameof(context));
