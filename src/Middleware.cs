@@ -66,7 +66,7 @@ internal sealed class Middleware
     private readonly IReadOnlyCollection<IPNetwork> _intranets;
     private readonly ResponseCompressionMiddleware _resource;
 
-    private class Details : IDisposable
+    private sealed class Details : IDisposable
     {
         public IMemoryOwner<byte>? RequestContent { get; set; }
         public long? RequestContentLength { get; set; }
