@@ -44,6 +44,34 @@ internal sealed class Middleware
     }
     .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
 
+    private static readonly IReadOnlyCollection<string> ContentDependentHeaders = new[]
+    {
+        HeaderNames.Age,
+        HeaderNames.CacheControl,
+        HeaderNames.ContentDisposition,
+        HeaderNames.ContentEncoding,
+        HeaderNames.ContentLanguage,
+        HeaderNames.ContentLength,
+        HeaderNames.ContentLocation,
+        HeaderNames.ContentMD5,
+        HeaderNames.ContentRange,
+        HeaderNames.ContentSecurityPolicy,
+        HeaderNames.ContentSecurityPolicyReportOnly,
+        HeaderNames.ContentType,
+        HeaderNames.ETag,
+        HeaderNames.Expires,
+        HeaderNames.GrpcAcceptEncoding,
+        HeaderNames.GrpcEncoding,
+        HeaderNames.GrpcMessage,
+        HeaderNames.GrpcStatus,
+        HeaderNames.GrpcTimeout,
+        HeaderNames.LastModified,
+        HeaderNames.Link,
+        HeaderNames.Location,
+        HeaderNames.SetCookie,
+    }
+    .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
+
     private static readonly IReadOnlyCollection<IPNetwork> PrivateNetworks = new IPNetwork[]
     {
         new(IPAddress.Parse("10.0.0.0"), 8),
@@ -68,6 +96,33 @@ internal sealed class Middleware
     private readonly IReadOnlyCollection<IPAddress> _addresses;
     private readonly IReadOnlyCollection<IPNetwork> _intranets;
     private readonly ResponseCompressionMiddleware _resource;
+
+    private readonly ConcurrentDictionary<IPAddress, IReadOnlyCollection<Filter>> _filters = new();
+
+    private sealed record Filter(Criteria Criteria, int StatusCode)
+    {
+        internal static IEnumerable<Filter> FromForm(IFormCollection form)
+        {
+            foreach (var (i, status) in form["filter[][status]"].Select((v, i) => (i, v)))
+            {
+                if (string.IsNullOrEmpty(status))
+                    continue;
+                var method = form["filter[][method]"].ElementAt(i);
+                var host   = form["filter[][host]"].ElementAt(i);
+                var path   = form["filter[][path]"].ElementAt(i);
+                var criteria = new Criteria
+                {
+                    Method = method is { Length: > 0 } ? method : null,
+                    Host   = host   is { Length: > 0 } ? new(host, Compiled | CultureInvariant) : null,
+                    Path   = path   is { Length: > 0 } ? new(path, Compiled | CultureInvariant) : null,
+                };
+                var statusCode = int.Parse(status, NumberStyles.None, NumberFormatInfo.InvariantInfo);
+                if (statusCode < 200 || 600 <= statusCode)
+                    throw new FormatException();
+                yield return new(criteria, statusCode);
+            }
+        }
+    }
 
     private sealed class Details : IDisposable
     {
@@ -145,12 +200,14 @@ internal sealed class Middleware
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(aborted, stopping);
         try
         {
+            var (remote, promiscuous) = (context.Connection.RemoteIpAddress, _settings.CurrentValue.Promiscuous);
+            if (remote is null)
+                throw new BadHttpRequestException("Invalid remote address");
+
             var addrs = await GetAddressesAsync(context.Request.Host.Host, linked.Token).ConfigureAwait(false);
             if (addrs.Any(IPAddress.IsLoopback) || addrs.Intersect(_addresses).Any())
             {
                 context.Response.Headers.Server = context.Request.Host.Host;
-                if (context.Connection.RemoteIpAddress is not IPAddress remote)
-                    throw new BadHttpRequestException("Invalid remote address", Status400BadRequest);
                 if (context.WebSockets.IsWebSocketRequest)
                 {
                     using var socket = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
@@ -159,6 +216,17 @@ internal sealed class Middleware
                 else if (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method))
                 {
                     await ServeLocalFilesAsync(remote, context, linked.Token).ConfigureAwait(false);
+                }
+                else if (HttpMethods.IsPost(context.Request.Method) && context.Request.HasFormContentType)
+                {
+                    var form = await context.Request.ReadFormAsync(linked.Token).ConfigureAwait(false);
+                    _filters[promiscuous || IPAddress.IsLoopback(remote) ? IPAddress.None : remote] =
+                        Filter.FromForm(form).ToImmutableArray();
+                    context.Response.End(Status201Created);
+                }
+                else if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    context.Response.End(Status415UnsupportedMediaType);
                 }
                 else
                 {
@@ -175,13 +243,17 @@ internal sealed class Middleware
                 return;
             }
 
+            var filter = _filters.TryGetValue(promiscuous || IPAddress.IsLoopback(remote) ? IPAddress.None : remote, out var filters)
+                ? filters.FirstOrDefault(f => f.Criteria.IsMatch(context.Request))
+                : null;
+
             if (context.WebSockets.IsWebSocketRequest)
             {
-                await ProxyWebSocketMessagesAsync(context, linked.Token).ConfigureAwait(false);
+                await ProxyWebSocketMessagesAsync(context, filter, linked.Token).ConfigureAwait(false);
                 return;
             }
 
-            await ProxyHttpRequestsAsync(context, behavior, linked.Token).ConfigureAwait(false);
+            await ProxyHttpRequestsAsync(context, behavior, filter, linked.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or InvalidOperationException)
         {
@@ -352,7 +424,7 @@ internal sealed class Middleware
         await _resource.Invoke(context).ConfigureAwait(false);
     }
 
-    private async Task ProxyWebSocketMessagesAsync(HttpContext context, CancellationToken aborted)
+    private async Task ProxyWebSocketMessagesAsync(HttpContext context, Filter? filter, CancellationToken aborted)
     {
         var (stopwatch, time) = (Stopwatch.StartNew(), DateTimeOffset.Now);
         var upgrader = context.Features.Get<IHttpUpgradeFeature>();
@@ -388,6 +460,16 @@ internal sealed class Middleware
                 context.Response.Headers.Server = string.Join(' ', values);
             else
                 context.Response.Headers.Append(name, values.ToArray());
+        }
+        if (filter is not null)
+        {
+            context.Response.StatusCode = filter.StatusCode;
+            context.Features.Get<IHttpResponseFeature>()!.ReasonPhrase = ReasonPhrases.GetReasonPhrase(filter.StatusCode);
+            foreach (var name in ContentDependentHeaders)
+                context.Response.Headers.Remove(name);
+            context.Response.Headers.CacheControl = CacheControlHeaderValue.NoStoreString;
+            context.Response.ContentLength = 0;
+            return;
         }
         // TODO: add deflate, subprotocols support
         using var downstream = await upgrader.UpgradeAsync().ConfigureAwait(false);
@@ -477,7 +559,7 @@ internal sealed class Middleware
         }
     }
 
-    private async Task ProxyHttpRequestsAsync(HttpContext context, Behavior behavior, CancellationToken aborted)
+    private async Task ProxyHttpRequestsAsync(HttpContext context, Behavior behavior, Filter? filter, CancellationToken aborted)
     {
         long bodyBytesSent = 0;
         #pragma warning disable CA2000
@@ -555,6 +637,16 @@ internal sealed class Middleware
                     context.Response.Headers.Append(name, values.Select(RemoveSecureFromSetCookie).ToArray());
                 else if (!securing || !name.Equals(HeaderNames.StrictTransportSecurity, OrdinalIgnoreCase))
                     context.Response.Headers.Append(name, values.ToArray());
+            }
+            if (filter is not null)
+            {
+                context.Response.StatusCode = filter.StatusCode;
+                context.Features.Get<IHttpResponseFeature>()!.ReasonPhrase = ReasonPhrases.GetReasonPhrase(filter.StatusCode);
+                foreach (var name in ContentDependentHeaders)
+                    context.Response.Headers.Remove(name);
+                context.Response.Headers.CacheControl = CacheControlHeaderValue.NoStoreString;
+                context.Response.ContentLength = 0;
+                return;
             }
             if (!HttpMethods.IsHead(context.Request.Method) &&
                 OK <= response.StatusCode && response.StatusCode is not NoContent and not NotModified)
