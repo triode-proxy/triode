@@ -1,4 +1,4 @@
-internal record Record(string Id, long Time, IPAddress? From, string Method, string Uri, string Protocol, int Status, string? Phrase, long Size, long Elapsed,
+internal sealed record Record(string Id, long Time, IPAddress? From, string Method, string Uri, string Protocol, int Status, string? Phrase, long Size, long Elapsed,
     IEnumerable<KeyValuePair<string, StringValues>> RequestHeaders, IEnumerable<KeyValuePair<string, StringValues>> ResponseHeaders)
 {
     internal ReadOnlyMemory<byte> Memory => JsonSerializer.SerializeToUtf8Bytes(new object[]
