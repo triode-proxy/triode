@@ -79,9 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     const records = new Map;
 
-    /**
-     * @param {boolean} closable
-     */
     async function help(closable = true) {
         const dialog = document.querySelector('dialog');
         const resolv = await (await fetch('resolv.conf')).text();
