@@ -34,6 +34,7 @@ web.Services.AddHttpClient(Options.DefaultName)
                     throw;
                 }
             },
+            ActivityHeadersPropagator = null,
             AllowAutoRedirect = false,
             AutomaticDecompression = DecompressionMethods.None,
             UseCookies = false,
