@@ -60,7 +60,7 @@ web.WebHost.ConfigureKestrel(kestrel =>
                 name = (connection?.LocalEndPoint as IPEndPoint)?.Address?.ToString();
             if (name is null)
                 return null;
-            return memcache.GetOrCreate<X509Certificate2>((nameof(X509Certificate2), name), entry =>
+            return memcache.GetOrCreate((nameof(X509Certificate2), name), entry =>
             {
                 var cert = authority.GetServerCertificate(name);
                 entry.SetOptions(new MemoryCacheEntryOptions()
