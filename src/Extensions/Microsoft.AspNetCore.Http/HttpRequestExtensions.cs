@@ -1,6 +1,6 @@
 namespace Microsoft.AspNetCore.Http;
 
-public static class HttpRequestExtensions
+public static partial class HttpRequestExtensions
 {
     public static string GetRawUri(this HttpRequest request)
     {

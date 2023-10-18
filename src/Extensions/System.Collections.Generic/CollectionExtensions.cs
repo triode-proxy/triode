@@ -1,6 +1,6 @@
 namespace System.Collections.Generic;
 
-public static class CollectionExtensions
+public static partial class CollectionExtensions
 {
     public static void AddRange<T>(this ICollection<T> collection, IEnumerable<T> items)
     {

@@ -1,6 +1,6 @@
 namespace System.Threading.Tasks;
 
-public static class TaskExtensions
+public static partial class TaskExtensions
 {
     public static async Task WithTimeout(this Task task, TimeSpan timeout, CancellationToken canceled = default)
     {

@@ -1,6 +1,6 @@
 namespace Microsoft.AspNetCore.Http;
 
-public static class HttpResponseExtensions
+public static partial class HttpResponseExtensions
 {
     public static void End(this HttpResponse response, int statusCode)
     {

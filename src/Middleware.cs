@@ -367,7 +367,7 @@ internal sealed class Middleware
         }
         client.Timeout = Timeout.InfiniteTimeSpan;
         using var response = await client.SendAsync(request, ResponseHeadersRead, aborted).ConfigureAwait(false);
-        if (response.StatusCode != HttpStatusCode.SwitchingProtocols)
+        if (response.StatusCode != SwitchingProtocols)
             throw new WebSocketException(WebSocketError.NotAWebSocket, $"The server returned status code '{(int)response.StatusCode}' when status code '101' was expected.");
         if (!response.Headers.TryGetValues(HeaderNames.SecWebSocketAccept, out var accept) || ComputeSecWebSockeAccept(key) != accept.Single())
             throw new WebSocketException(WebSocketError.HeaderError, $"The '{HeaderNames.SecWebSocketAccept}' header value is missing or invalid.");
@@ -550,8 +550,7 @@ internal sealed class Middleware
                     context.Response.Headers.Append(name, values.ToArray());
             }
             if (!HttpMethods.IsHead(context.Request.Method) &&
-                (int)response.StatusCode >= 200 &&
-                response.StatusCode is not HttpStatusCode.NoContent and not HttpStatusCode.NotModified)
+                OK <= response.StatusCode && response.StatusCode is not NoContent and not NotModified)
             {
                 var responseContent = new MemoryPoolStream((int)(response.Content.Headers.ContentLength ?? 0));
                 details.ResponseContent = responseContent;

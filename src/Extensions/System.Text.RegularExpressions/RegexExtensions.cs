@@ -1,6 +1,6 @@
 namespace System.Text.RegularExpressions;
 
-public static class RegexExtensions
+public static partial class RegexExtensions
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool TryGetValue<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> collection, string key, [MaybeNullWhen(false)] out TValue value) where TKey : Regex

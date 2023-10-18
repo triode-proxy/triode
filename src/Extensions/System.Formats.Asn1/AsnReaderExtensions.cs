@@ -1,6 +1,6 @@
 ﻿namespace System.Formats.Asn1;
 
-public static class AsnReaderExtensions
+public static partial class AsnReaderExtensions
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IEnumerable<(Asn1Tag Tag, ReadOnlyMemory<byte> Content)> ReadValues(this AsnReader reader)

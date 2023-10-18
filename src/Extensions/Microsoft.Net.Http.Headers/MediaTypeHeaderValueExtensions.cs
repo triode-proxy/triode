@@ -1,6 +1,6 @@
 namespace Microsoft.Net.Http.Headers;
 
-public static class MediaTypeHeaderValueExtensions
+public static partial class MediaTypeHeaderValueExtensions
 {
     private static readonly Encoding DefaultEncoding = Encoding.UTF8;
 

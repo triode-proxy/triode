@@ -1,6 +1,6 @@
 namespace System;
 
-public static class StringExtensions
+public static partial class StringExtensions
 {
     private static readonly IReadOnlyCollection<string> TwoLetterWords = new[]
     {

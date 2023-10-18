@@ -1,6 +1,6 @@
 namespace System.Net.Http.Headers;
 
-public static class HttpContentHeadersExtensions
+public static partial class HttpContentHeadersExtensions
 {
     public static bool TryAddIfNotPresent(this HttpContentHeaders headers, string name, IEnumerable<string?> values)
     {

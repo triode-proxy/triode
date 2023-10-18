@@ -1,6 +1,6 @@
 namespace Microsoft.AspNetCore.Builder;
 
-public static class StaticFileOptionsExtensions
+public static partial class StaticFileOptionsExtensions
 {
     public static StaticFileOptions WithCacheControl(this StaticFileOptions options, string value)
     {

@@ -1,6 +1,6 @@
 namespace System.Net.Sockets;
 
-public static class UdpClientExtensions
+public static partial class UdpClientExtensions
 {
     private const int IOC_IN            = unchecked((int)0x80000000);
     private const int IOC_VENDOR        = unchecked((int)0x18000000);

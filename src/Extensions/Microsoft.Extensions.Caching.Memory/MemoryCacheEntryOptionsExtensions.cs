@@ -1,6 +1,6 @@
 namespace Microsoft.Extensions.Caching.Memory;
 
-public static class MemoryCacheEntryOptionsExtensions
+public static partial class MemoryCacheEntryOptionsExtensions
 {
     private static readonly PostEvictionDelegate Dispose = (_, value, _, _) => (value as IDisposable)?.Dispose();
 

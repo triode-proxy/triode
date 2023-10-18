@@ -92,7 +92,7 @@ internal sealed class Service : BackgroundService
                     name,
                     "DNS",
                     (int)response.Header.ResponseCode,
-                    ToReasonPhrase(response.Header.ResponseCode),
+                    response.Header.ResponseCode.AsString(),
                     response.Memory.Length,
                     stopwatch.ElapsedMilliseconds,
                     Array.Empty<KeyValuePair<string, StringValues>>(),
@@ -111,7 +111,7 @@ internal sealed class Service : BackgroundService
                     name,
                     "DNS",
                     (int)response.Header.ResponseCode,
-                    ToReasonPhrase(response.Header.ResponseCode),
+                    response.Header.ResponseCode.AsString(),
                     response.Memory.Length,
                     stopwatch.ElapsedMilliseconds,
                     Array.Empty<KeyValuePair<string, StringValues>>(),
@@ -142,15 +142,4 @@ internal sealed class Service : BackgroundService
 
         return (await _resolver.ResolveAsync(_hostname, type, remote.AddressFamily, stopping).ConfigureAwait(false)).Addresses;
     }
-
-    private static string ToReasonPhrase(DnsResponseCode code) => code switch
-    {
-        DnsResponseCode.NoError        => "NOERROR",
-        DnsResponseCode.FormatError    => "FORMERR",
-        DnsResponseCode.ServerFailure  => "SERVFAIL",
-        DnsResponseCode.NameError      => "NXDOMAIN",
-        DnsResponseCode.NotImplemented => "NOTIMP",
-        DnsResponseCode.Refused        => "REFUSED",
-        _                              => $"{code}",
-    };
 }

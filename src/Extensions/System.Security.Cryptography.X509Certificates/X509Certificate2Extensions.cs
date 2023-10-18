@@ -1,6 +1,6 @@
 namespace System.Security.Cryptography.X509Certificates;
 
-public static class X509Certificate2Extensions
+public static partial class X509Certificate2Extensions
 {
     public static X509Certificate2 CopyWithKeyStorageFlags(this X509Certificate2 certificate, X509KeyStorageFlags keyStorageFlags)
     {
