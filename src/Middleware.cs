@@ -401,10 +401,17 @@ internal sealed class Middleware
             context.Response.Headers.ExceptBy(Http2PseudoHeaders, p => p.Key).ToArray()
             ));
         var (id, from) = (context.TraceIdentifier, context.Connection.RemoteIpAddress);
-        await Task.WhenAll(
-            ProxyWebSocketFramesAsync(id, from, downstream, upstream, aborted),
-            ProxyWebSocketFramesAsync(id, from, upstream, downstream, aborted)
-            ).ConfigureAwait(false);
+        try
+        {
+            await Task.WhenAll(
+                ProxyWebSocketFramesAsync(id, from, downstream, upstream, aborted),
+                ProxyWebSocketFramesAsync(id, from, upstream, downstream, aborted)
+                ).ConfigureAwait(false);
+        }
+        catch (EndOfStreamException ex)
+        {
+            throw new WebSocketException(WebSocketError.ConnectionClosedPrematurely, ex);
+        }
     }
 
     private async Task ProxyWebSocketFramesAsync(string id, IPAddress? from, Stream source, Stream target, CancellationToken aborted)
@@ -413,8 +420,7 @@ internal sealed class Middleware
         var memory = buffer.Memory;
         while (!aborted.IsCancellationRequested)
         {
-            if (await source.ReadAsync(memory[..2], aborted).ConfigureAwait(false) != 2)
-                throw new WebSocketException(WebSocketError.ConnectionClosedPrematurely);
+            await source.ReadExactlyAsync(memory[..2], aborted).ConfigureAwait(false);
             await target.WriteAsync(memory[..2], aborted).ConfigureAwait(false);
             var final  = (memory.Span[0] & 0x80) != 0;
             var opcode = (memory.Span[0] & 0x0F);
@@ -422,33 +428,27 @@ internal sealed class Middleware
             var length = (memory.Span[1] & 0x7F) + 0L;
             if (length == 126)
             {
-                if (await source.ReadAsync(memory[..2], aborted).ConfigureAwait(false) != 2)
-                    throw new WebSocketException(WebSocketError.ConnectionClosedPrematurely);
+                await source.ReadExactlyAsync(memory[..2], aborted).ConfigureAwait(false);
                 length = ReadUInt16BigEndian(memory.Span[..2]);
-                if (length < 126)
-                    throw new WebSocketException(WebSocketError.Faulted);
+                Debug.Assert(length >= 126);
                 await target.WriteAsync(memory[..2], aborted).ConfigureAwait(false);
             }
             else if (length == 127)
             {
-                if (await source.ReadAsync(memory[..8], aborted).ConfigureAwait(false) != 8)
-                    throw new WebSocketException(WebSocketError.ConnectionClosedPrematurely);
+                await source.ReadExactlyAsync(memory[..8], aborted).ConfigureAwait(false);
                 length = ReadInt64BigEndian(memory.Span[..8]);
-                if (length <= ushort.MaxValue)
-                    throw new WebSocketException(WebSocketError.Faulted);
+                Debug.Assert(length > ushort.MaxValue);
                 await target.WriteAsync(memory[..8], aborted).ConfigureAwait(false);
             }
             if (masked)
             {
-                if (await source.ReadAsync(memory[..4], aborted).ConfigureAwait(false) != 4)
-                    throw new WebSocketException(WebSocketError.ConnectionClosedPrematurely);
+                await source.ReadExactlyAsync(memory[..4], aborted).ConfigureAwait(false);
                 await target.WriteAsync(memory[..4], aborted).ConfigureAwait(false);
             }
             for (long offset = 0; offset < length; )
             {
-                var n = await source.ReadAsync(memory[..(int)Math.Min(memory.Length, length - offset)], aborted).ConfigureAwait(false);
-                if (n == 0)
-                    throw new WebSocketException(WebSocketError.ConnectionClosedPrematurely);
+                var n = (int)Math.Min(memory.Length, length - offset);
+                await source.ReadExactlyAsync(memory[..n], aborted).ConfigureAwait(false);
                 await target.WriteAsync(memory[..n], aborted).ConfigureAwait(false);
                 offset += n;
             }
