@@ -13,6 +13,7 @@ global using Microsoft.Extensions.Primitives;
 global using Microsoft.Net.Http.Headers;
 global using System.Buffers;
 global using System.Collections.Concurrent;
+global using System.Collections.Immutable;
 global using System.Diagnostics;
 global using System.Diagnostics.CodeAnalysis;
 global using System.Formats.Asn1;

@@ -7,7 +7,7 @@ web.Services.Configure<Settings>(web.Configuration);
 web.Services.Configure<Settings>(settings =>
 {
     settings.Rules = web.Configuration.GetSection(nameof(settings.Rules)).AsEnumerable(true)
-        .ToDictionary(p => new Wildcard(p.Key, IgnoreCase | Compiled | CultureInvariant), p => Enum.Parse<Behavior>(p.Value, true));
+        .ToImmutableDictionary(p => new Wildcard(p.Key, IgnoreCase | Compiled | CultureInvariant), p => Enum.Parse<Behavior>(p.Value, true));
 });
 web.Services.AddHttpClient(Options.DefaultName)
     .SetHandlerLifetime(web.Configuration.Get<Settings>().Upstream.Http.Handler)

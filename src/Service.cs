@@ -20,7 +20,7 @@ internal sealed class Service : BackgroundService
             .SelectMany(ni => ni.GetIPProperties().UnicastAddresses)
             .Where(uni => !uni.Address.IsIPv6LinkLocal)
             .Select(uni => new IPNetwork(uni.Address, uni.PrefixLength))
-            .ToArray();
+            .ToImmutableArray();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stopping)

@@ -24,14 +24,15 @@ internal sealed class Middleware
     private static readonly long MaxDetailsCacheSize = Math.Min(MemoryPool<byte>.Shared.MaxBufferSize, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 8);
     private static readonly TimeSpan DetailsCacheDuration = TimeSpan.FromDays(1);
 
-    private static readonly IReadOnlyCollection<string> Http2PseudoHeaders = new HashSet<string>(new[]
+    private static readonly IReadOnlyCollection<string> Http2PseudoHeaders = new[]
     {
         HeaderNames.Authority,
         HeaderNames.Method,
         HeaderNames.Path,
         HeaderNames.Scheme,
         HeaderNames.Status,
-    });
+    }
+    .ToImmutableHashSet();
 
     private static readonly IReadOnlyCollection<string> NonPropagatableHeaders = new[]
     {
@@ -39,7 +40,8 @@ internal sealed class Middleware
         HeaderNames.TE,
         HeaderNames.Trailer,
         HeaderNames.TransferEncoding,
-    };
+    }
+    .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
 
     private static readonly IReadOnlyCollection<IPNetwork> PrivateNetworks = new IPNetwork[]
     {
@@ -114,13 +116,13 @@ internal sealed class Middleware
             .SelectMany(ni => ni.GetIPProperties().UnicastAddresses)
             .Where(uni => !uni.Address.IsIPv6LinkLocal)
             .ToArray();
-        _addresses = addresses.Select(uni => uni.Address).ToArray();
+        _addresses = addresses.Select(uni => uni.Address).ToImmutableArray();
         _intranets = addresses.Where(uni => uni.Address.IsIPv6UniqueLocal || PrivateNetworks.Any(n => n.Contains(uni.Address)))
                               .Select(uni => new IPNetwork(uni.Address, uni.PrefixLength))
-                              .ToArray();
-        _hostnames = hostname.Contains('.') || _intranets.Count == 0
+                              .ToImmutableArray();
+        _hostnames = (hostname.Contains('.') || _intranets.Count == 0
             ? new[] { hostname }
-            : new[] { hostname, $"{hostname}.local" };
+            : new[] { hostname, $"{hostname}.local" }).ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
         _authority.CrlDistributionPoints.AddRange(
             _hostnames.Select(hostname => new UriBuilder(Uri.UriSchemeHttp, hostname) { Path = "/root.crl" }.Uri)
             );
@@ -357,7 +359,7 @@ internal sealed class Middleware
         using var client = _clients.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, RequestUri.CopyFrom(context.Request));
         foreach (var (name, values) in context.Request.Headers
-            .ExceptBy(Http2PseudoHeaders, p => p.Key, StringComparer.Ordinal)
+            .ExceptBy(Http2PseudoHeaders, p => p.Key)
             .ExceptBy(NonPropagatableHeaders.Except(HeaderNames.Connection), p => p.Key, StringComparer.OrdinalIgnoreCase))
         {
             if (name.Equals(HeaderNames.Cookie, OrdinalIgnoreCase))
@@ -647,7 +649,7 @@ internal sealed class Middleware
     {
         if (name.Equals("localhost", OrdinalIgnoreCase))
             return new[] { IPAddress.Loopback, IPAddress.IPv6Loopback };
-        if (_hostnames.Contains(name, StringComparer.OrdinalIgnoreCase))
+        if (_hostnames.Contains(name))
             return _addresses;
         if (IPAddress.TryParse(name, out var addr))
             return new[] { addr };
