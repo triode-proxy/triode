@@ -420,7 +420,7 @@ internal sealed class Middleware
     {
         using var buffer = MemoryPool<byte>.Shared.Rent(BufferSize);
         var memory = buffer.Memory;
-        while (!aborted.IsCancellationRequested)
+        while (true)
         {
             await source.ReadExactlyAsync(memory[..2], aborted).ConfigureAwait(false);
             await target.WriteAsync(memory[..2], aborted).ConfigureAwait(false);
