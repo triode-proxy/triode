@@ -48,6 +48,6 @@ internal sealed class Settings
     public bool Promiscuous { get; set; }
     public UpstreamOptions Upstream { get; set; } = new();
     public TTLOptions TTL { get; set; } = new();
-    public IReadOnlyDictionary<Wildcard, Behavior> Rules { get; set; } = new Dictionary<Wildcard, Behavior>();
+    public IReadOnlyDictionary<Domain, Behavior> Rules { get; set; } = new Dictionary<Domain, Behavior>();
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? Subs { get; set; }
 }
