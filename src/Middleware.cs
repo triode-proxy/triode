@@ -6,6 +6,7 @@ internal sealed class Middleware
     private const int BufferSize = 64 * 1024;
 
     private const int Status499Aborted = 499;
+    private const string PhraseAborted = "Aborted";
 
     private const string Gzip = "gzip";
     private const string Deflate = "deflate";
@@ -230,7 +231,7 @@ internal sealed class Middleware
                 context.Request.GetRawUri(),
                 context.Request.Protocol,
                 aborted.IsCancellationRequested ? Status499Aborted : context.Response.StatusCode,
-                aborted.IsCancellationRequested ? "Aborted" : context.Features.Get<IHttpResponseFeature>()?.ReasonPhrase,
+                aborted.IsCancellationRequested ? PhraseAborted : context.Features.Get<IHttpResponseFeature>()?.ReasonPhrase,
                 context.Items.TryGetValue(BodyBytesSentKey, out var sent) ? (long)sent! : default,
                 stopwatch.ElapsedMilliseconds,
                 context.Request.Headers.ExceptBy(Http2PseudoHeaders, p => p.Key).ToArray(),
