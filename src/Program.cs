@@ -15,6 +15,7 @@ web.Services.AddHttpClient(Options.DefaultName)
     .ConfigureHttpMessageHandlerBuilder(builder =>
     {
         var resolver = builder.Services.GetRequiredService<Resolver>();
+        var settings = builder.Services.GetRequiredService<IOptionsMonitor<Settings>>();
         builder.PrimaryHandler = new SocketsHttpHandler
         {
             ConnectCallback = async (connection, canceled) =>
@@ -37,6 +38,7 @@ web.Services.AddHttpClient(Options.DefaultName)
             ActivityHeadersPropagator = null,
             AllowAutoRedirect = false,
             AutomaticDecompression = DecompressionMethods.None,
+            ConnectTimeout = settings.CurrentValue.Upstream.Http.Timeout / 2,
             UseCookies = false,
             UseProxy = false,
         };
