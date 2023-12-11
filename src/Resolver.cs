@@ -80,7 +80,7 @@ internal sealed class Resolver : IDisposable
         {
             var timeout = _settings.CurrentValue.Upstream.Dns.Timeout;
             await _client.SendAsync(query.Memory, aborted).ConfigureAwait(false);
-            var result = await completion.Task.WithTimeout(timeout, aborted).ConfigureAwait(false);
+            var result = await completion.Task.WaitAsync(timeout, aborted).ConfigureAwait(false);
             var response = new DnsPacket(result.Buffer);
             if (response.Type != DnsPacketType.Response)
                 return DnsPacket.CreateResponse(query.Header, DnsResponseCode.ServerFailure);
