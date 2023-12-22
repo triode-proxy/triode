@@ -26,7 +26,7 @@ public static partial class StringExtensions
         while (start < chars.Length)
         {
             var end = start + s.Skip(start).TakeWhile(c => char.IsLetterOrDigit(c)).Count();
-            if (start + 2 == end && !TwoLetterWords.Any(w => s.AsSpan(start, 2).Equals(w)))
+            if (start + 2 == end && !TwoLetterWords.Any(w => s.AsSpan(start, 2).Equals(w, OrdinalIgnoreCase)))
             {
                 chars[start] = char.ToUpper(s[start++], culture);
                 chars[start] = char.ToUpper(s[start++], culture);
