@@ -8,12 +8,12 @@
 %endif
 
 Name:              triode
-Version:           0.2.0
+Version:           0.2.1
 Release:           0%{?dist}
 Summary:           DNS-based selective HTTP debugging proxy
 License:           AGPLv3
 URL:               https://triode-proxy.github.io
-Source0:           https://github.com/triode-proxy/triode/archive/refs/tags/v0.1.0.tar.gz#/triode-%{version}.tar.gz
+Source0:           https://github.com/triode-proxy/triode/archive/refs/tags/v%{version}.tar.gz#/triode-%{version}.tar.gz
 
 BuildRequires:     dotnet-sdk-6.0
 BuildRequires:     make
@@ -97,6 +97,12 @@ exit 0
 %{_sbindir}/triode-trace
 
 %changelog
+* Mon Jan 01 2024 MALU <contact@andantissimo.jp> - 0.2.1-0
+- remove TraceParent header
+- fix domain matching
+- set connect timeout
+- and some fixes
+
 * Wed Sep 20 2023 MALU <contact@andantissimo.jp> - 0.2.0-0
 - add ANY query support
 - accept mDNS hostname
