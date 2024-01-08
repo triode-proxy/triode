@@ -73,7 +73,7 @@ internal sealed class Service : BackgroundService
             }
             else if (!_settings.CurrentValue.Rules.TryGetValue(name, out var behavior) || behavior == Behavior.Pass)
             {
-                var (addrs, ttl, code) = await _resolver.ResolveAsync(name, type, remote.AddressFamily, stopping).ConfigureAwait(false);
+                var (addrs, ttl, code) = await _resolver.ResolveAsync(name, type, stopping).ConfigureAwait(false);
                 var response = addrs.Count > 0
                     ? DnsPacket.CreateResponse(question, ttl, addrs)
                     : DnsPacket.CreateResponse(query.Header, code);
@@ -140,6 +140,6 @@ internal sealed class Service : BackgroundService
         if (siblings.Any())
             return siblings.ToArray();
 
-        return (await _resolver.ResolveAsync(_hostname, type, remote.AddressFamily, stopping).ConfigureAwait(false)).Addresses;
+        return (await _resolver.ResolveAsync(_hostname, type, stopping).ConfigureAwait(false)).Addresses;
     }
 }

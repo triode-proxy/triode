@@ -337,7 +337,7 @@ internal sealed class Middleware
         {
             var name = context.Request.Host.Host;
             var addrs = IPAddress.TryParse(name, out var addr) ? new[] { addr }
-                : (await _resolver.ResolveAsync(name, DnsRecordType.A, remote.AddressFamily, aborted).ConfigureAwait(false)).Addresses;
+                : (await _resolver.ResolveAsync(name, DnsRecordType.A, aborted).ConfigureAwait(false)).Addresses;
             var data = Encoding.ASCII.GetBytes(string.Join(string.Empty, addrs.Select(a => $"nameserver {a}\n")));
             context.Response.ContentLength = data.Length;
             context.Response.ContentType = "text/plain";
