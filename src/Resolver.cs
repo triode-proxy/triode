@@ -31,14 +31,14 @@ internal sealed class Resolver : IDisposable
     {
         if (_v6)
         {
-            var (addrs, ttl, code) = await ResolveAsync(name, DnsRecordType.AAAA, AddressFamily.InterNetworkV6, aborted).ConfigureAwait(false);
+            var (addrs, ttl, code) = await ResolveAsync(name, DnsRecordType.AAAA, aborted).ConfigureAwait(false);
             if (addrs.Count > 0)
                 return (addrs, ttl, code);
         }
-        return await ResolveAsync(name, DnsRecordType.A, _v6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork, aborted).ConfigureAwait(false);
+        return await ResolveAsync(name, DnsRecordType.A, aborted).ConfigureAwait(false);
     }
 
-    public async Task<(IReadOnlyCollection<IPAddress> Addresses, TimeSpan TimeToLive, DnsResponseCode ResponseCode)> ResolveAsync(string name, DnsRecordType type, AddressFamily addressFamily, CancellationToken aborted = default)
+    public async Task<(IReadOnlyCollection<IPAddress> Addresses, TimeSpan TimeToLive, DnsResponseCode ResponseCode)> ResolveAsync(string name, DnsRecordType type, CancellationToken aborted = default)
     {
         Debug.Assert(type is DnsRecordType.A or DnsRecordType.AAAA or DnsRecordType.ANY);
         if (_etchosts.CurrentValue.GetAddresses(name) is IEnumerable<IPAddress> matches && matches.Any())
