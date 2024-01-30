@@ -72,6 +72,7 @@ internal sealed class Middleware
     private sealed class Details : IDisposable
     {
         public IMemoryOwner<byte>? RequestContent { get; set; }
+        public string? RequestContentEncoding { get; set; }
         public long? RequestContentLength { get; set; }
         public string? RequestContentType { get; set; }
         public IMemoryOwner<byte>? ResponseContent { get; set; }
@@ -274,6 +275,8 @@ internal sealed class Middleware
                         context.Response.GetTypedHeaders().ContentRange = new(0, details.RequestContent.Memory.Length - 1, length);
                     }
                     context.Response.ContentLength = details.RequestContent.Memory.Length;
+                    if (details.RequestContentEncoding is { Length: > 0 })
+                        context.Response.Headers.ContentEncoding = details.RequestContentEncoding;
                     if (details.RequestContentType is { Length: > 0 })
                         context.Response.ContentType = details.RequestContentType;
                     if (!HttpMethods.IsHead(context.Request.Method) && details.RequestContent.Memory.Length > 0)
@@ -497,6 +500,7 @@ internal sealed class Middleware
             {
                 var requestContent = new MemoryPoolStream((int)(context.Request.ContentLength ?? 0));
                 details.RequestContent = requestContent;
+                details.RequestContentEncoding = context.Request.Headers.ContentEncoding;
                 details.RequestContentLength = context.Request.ContentLength;
                 details.RequestContentType = context.Request.ContentType;
                 var contentType = context.Request.GetTypedHeaders().ContentType;
